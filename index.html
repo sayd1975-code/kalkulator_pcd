@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="pl">
 <head>
@@ -29,6 +28,7 @@ box-sizing: border-box;
 h1 { font-size: 26px; font-weight: 500; margin: 0 0 5px 0; line-height: 1.2; }
 h2 { font-size: 14px; color: #888888; font-weight: 400; margin: 0; }
 .panel { background-color: #1c1c1e; border-radius: 16px; padding: 20px; margin-bottom: 15px; }
+.sub { font-size: 16px; font-weight: 600; margin: 0 0 12px 0; }
 .tabs { display: flex; background: #2c2c2e; border-radius: 8px; margin-bottom: 20px; padding: 4px; }
 .tab-btn { flex: 1; padding: 8px 0; text-align: center; background: transparent; color: #8e8e93; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
 .tab-btn.active { background: #4c4c4e; color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
@@ -41,7 +41,14 @@ h2 { font-size: 14px; color: #888888; font-weight: 400; margin: 0; }
 input[type="range"] { flex-grow: 1; margin-right: 10px; appearance: none; height: 4px; background: #3a3a3c; border-radius: 2px; outline: none; }
 input[type="range"]::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #ffffff; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 input[type="number"] { width: 70px; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; color: #ffffff; font-size: 15px; text-align: right; padding: 5px; outline: none; font-family: monospace; }
+input[type="text"] { flex-grow: 1; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; color: #ffffff; font-size: 14px; padding: 8px; outline: none; }
 select { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; color: #ffffff; font-size: 13px; padding: 5px; outline: none; flex-grow: 1; }
+.mini-label { font-size: 13px; color: #8e8e93; white-space: nowrap; }
+.hint { font-size: 12px; color: #8e8e93; margin: 8px 0 0 0; }
+.btn-small { background: #0a84ff; color: white; border: none; border-radius: 6px; padding: 8px 14px; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.export-btn { flex: 1; background: #2c2c2e; color: #ffffff; border: 1px solid #3a3a3c; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 500; cursor: pointer; }
+.preset-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #2c2c2e; border-radius: 8px; padding: 6px 6px 6px 0; margin-bottom: 8px; }
+.preset-name { flex-grow: 1; text-align: left; background: none; border: none; color: #e5e5ea; font-size: 14px; padding: 10px 12px; cursor: pointer; }
 .manual-holes-list { margin-top: 15px; max-height: 250px; overflow-y: auto; }
 .manual-hole-item { background: #2c2c2e; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
 .manual-hole-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -49,11 +56,11 @@ select { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; col
 .manual-hole-label { font-size: 14px; color: #e5e5ea; font-weight: bold; }
 .remove-btn { background: #ff3b30; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
 .add-btn { width: 100%; background: #0a84ff; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 500; margin-top: 10px; cursor: pointer; }
-.results-cards { display: flex; gap: 15px; margin-top: 25px; }
-.card { background-color: #2c2c2e; border-radius: 12px; padding: 15px; flex: 1; }
-.card-label { font-size: 12px; color: #8e8e93; margin-bottom: 8px; display: block; }
-.card-value { font-size: 18px; font-weight: 600; color: #ffffff; }
-.card-unit { font-size: 12px; color: #8e8e93; font-weight: normal; margin-top: 4px; display: block; }
+.results-cards { display: flex; gap: 10px; margin-top: 25px; }
+.card { background-color: #2c2c2e; border-radius: 12px; padding: 12px; flex: 1; }
+.card-label { font-size: 11px; color: #8e8e93; margin-bottom: 8px; display: block; }
+.card-value { font-size: 16px; font-weight: 600; color: #ffffff; }
+.card-unit { font-size: 11px; color: #8e8e93; font-weight: normal; margin-top: 4px; display: block; }
 .canvas-container { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
 canvas { max-width: 100%; }
 .table-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 25px 0 15px 0; padding: 0 5px; }
@@ -79,6 +86,35 @@ td:first-child { color: #8e8e93; }
 <input type="range" id="diameterSlider" min="10" max="600" value="300" step="1">
 <input type="number" id="diameter" value="300">
 </div>
+</div>
+<div class="input-group">
+<label>Środek okręgu (X0 / Y0)</label>
+<div class="input-row" style="justify-content: flex-start;">
+<span class="mini-label">X</span>
+<input type="number" id="offsetX" value="0" step="0.1">
+<span class="mini-label">Y</span>
+<input type="number" id="offsetY" value="0" step="0.1">
+</div>
+<p class="hint">Współrzędne z tabeli będą liczone od tego punktu — dla PCD leżącego poza X0Y0 detalu.</p>
+</div>
+<div class="input-group">
+<label>Gwint otworów (opcjonalnie)</label>
+<select id="threadSelect" onchange="updateCalculations()">
+<option value="">— brak (zwykłe wiercenie) —</option>
+<option value="M3">M3 — skok 0,5</option>
+<option value="M4">M4 — skok 0,7</option>
+<option value="M5">M5 — skok 0,8</option>
+<option value="M6">M6 — skok 1,0</option>
+<option value="M8">M8 — skok 1,25</option>
+<option value="M10">M10 — skok 1,5</option>
+<option value="M12">M12 — skok 1,75</option>
+<option value="M14">M14 — skok 2,0</option>
+<option value="M16">M16 — skok 2,0</option>
+<option value="M18">M18 — skok 2,5</option>
+<option value="M20">M20 — skok 2,5</option>
+<option value="M24">M24 — skok 3,0</option>
+</select>
+<p class="hint">Karta wyniku pokaże średnicę otworu pod gwint, a eksport G-kodu dopisze ją w komentarzu.</p>
 </div>
 <div class="tabs">
 <button class="tab-btn active" onclick="setMode('regular')">Równomierne</button>
@@ -119,11 +155,15 @@ td:first-child { color: #8e8e93; }
 <span class="card-label">Krok kątowy</span>
 <span class="card-value" id="resAngleStep">15.000°</span>
 </div>
-<!-- NOWA KARTA CIĘCIWY -->
 <div class="card" id="chordCard">
 <span class="card-label" id="chordLabel">Cięciwa L</span>
 <span class="card-value" id="resChord">77.646</span>
 <span class="card-unit">mm</span>
+</div>
+<div class="card" id="threadCard" style="display: none;">
+<span class="card-label" id="threadCardLabel">Otwór pod gwint</span>
+<span class="card-value" id="resThreadDrill">4.200</span>
+<span class="card-unit" id="threadUnit">mm</span>
 </div>
 </div>
 </div>
@@ -149,11 +189,71 @@ td:first-child { color: #8e8e93; }
 </tbody>
 </table>
 </div>
+<div class="panel">
+<h3 class="sub">📤 Eksport do maszyny</h3>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
+<button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
+</div>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<span class="mini-label">Format</span>
+<select id="gcodeFormat">
+<option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
+<option value="fanuc">G81 (Fanuc / Haas)</option>
+<option value="plain">Tylko lista X Y</option>
+</select>
+</div>
+<div class="input-row" style="gap: 8px;">
+<span class="mini-label">Z</span>
+<input type="number" id="gzDepth" value="-10" step="0.5">
+<span class="mini-label">F</span>
+<input type="number" id="gFeed" value="100" step="10">
+<span class="mini-label">S</span>
+<input type="number" id="gSpeed" value="1200" step="100">
+</div>
+<p class="hint">Z — głębokość wiercenia (mm), F — posuw (mm/min), S — obroty. Program to punkt startowy — przed obróbką sprawdź go na maszynie.</p>
+</div>
+<div class="panel">
+<h3 class="sub">💾 Zapisane ustawienia</h3>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<input type="text" id="presetName" placeholder="np. Kołnierz 24 otwory">
+<button class="btn-small" onclick="savePreset()">Zapisz</button>
+</div>
+<div id="presetList"></div>
+</div>
+<div class="panel">
+<h3 class="sub">🔧 Gwinty metryczne — środek pod gwint (wiertło)</h3>
+<table id="threadTable">
+<thead>
+<tr>
+<th>Gwint</th>
+<th>Skok (mm)</th>
+<th>Otwór (mm)</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<p class="hint">Wartości dla gwintów zwykłych (głównych). Cykl gwintowania: G84 (Fanuc) / CYCLE84 (Sinumerik).</p>
+</div>
 </div>
 <script>
 const canvas = document.getElementById('pcdCanvas');
 const ctx = canvas.getContext('2d');
 const resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
+const THREADS = {
+"M3": { pitch: 0.5, drill: 2.5 },
+"M4": { pitch: 0.7, drill: 3.3 },
+"M5": { pitch: 0.8, drill: 4.2 },
+"M6": { pitch: 1.0, drill: 5.0 },
+"M8": { pitch: 1.25, drill: 6.8 },
+"M10": { pitch: 1.5, drill: 8.5 },
+"M12": { pitch: 1.75, drill: 10.2 },
+"M14": { pitch: 2.0, drill: 12.0 },
+"M16": { pitch: 2.0, drill: 14.0 },
+"M18": { pitch: 2.5, drill: 15.5 },
+"M20": { pitch: 2.5, drill: 17.5 },
+"M24": { pitch: 3.0, drill: 21.0 }
+};
 let currentMode = 'regular';
 let manualHoles = [
 { angle: 0, reference: 'absolute' },
@@ -161,18 +261,20 @@ let manualHoles = [
 { angle: 17, reference: 1 },
 { angle: 52.5, reference: 2 }
 ];
+let lastExport = { points: [], meta: null };
 function setMode(mode) {
-currentMode = mode;
 document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 event.target.classList.add('active');
-document.getElementById('regularMode').classList.remove('active');
-document.getElementById('manualMode').classList.remove('active');
+applyMode(mode);
+}
+function applyMode(mode) {
+currentMode = mode;
+document.getElementById('regularMode').classList.toggle('active', mode === 'regular');
+document.getElementById('manualMode').classList.toggle('active', mode !== 'regular');
 if(mode === 'regular') {
-document.getElementById('regularMode').classList.add('active');
 document.getElementById('stepCard').style.display = 'block';
 document.getElementById('chordCard').style.display = 'block';
 } else {
-document.getElementById('manualMode').classList.add('active');
 document.getElementById('stepCard').style.display = 'none';
 document.getElementById('chordCard').style.display = 'none';
 renderManualList();
@@ -233,7 +335,7 @@ function removeManualHole(index) {
 for(let i = index + 1; i < manualHoles.length; i++) {
 if(manualHoles[i].reference === String(index)) {
 manualHoles[i].reference = 'absolute';
-} else if (manualHoles[i].reference !== 'absolute' && parseInt(manualHoles[i].reference) > index) {
+} else if(manualHoles[i].reference !== 'absolute' && parseInt(manualHoles[i].reference) > index) {
 manualHoles[i].reference = String(parseInt(manualHoles[i].reference) - 1);
 }
 }
@@ -252,6 +354,18 @@ updateCalculations();
 function updateCalculations() {
 const diameter = parseFloat(document.getElementById('diameter').value) || 0;
 const radius = diameter / 2;
+const offX = parseFloat(document.getElementById('offsetX').value) || 0;
+const offY = parseFloat(document.getElementById('offsetY').value) || 0;
+const threadSel = document.getElementById('threadSelect').value;
+const thread = threadSel ? THREADS[threadSel] : null;
+const threadCard = document.getElementById('threadCard');
+if (thread) {
+threadCard.style.display = 'block';
+document.getElementById('resThreadDrill').innerText = thread.drill.toFixed(3);
+document.getElementById('threadUnit').innerText = 'mm · skok ' + thread.pitch;
+} else {
+threadCard.style.display = 'none';
+}
 document.getElementById('resRadius').innerText = radius.toFixed(3);
 resultsTable.innerHTML = '';
 const points = [];
@@ -261,7 +375,6 @@ const startAngle = parseFloat(document.getElementById('startAngle').value) || 0;
 const angleStep = 360 / holes;
 document.getElementById('resAngleStep').innerText = `${angleStep.toFixed(3)}°`;
 document.getElementById('holeCountDisplay').innerHTML = `${holes}<br>otworów`;
-// OBLICZANIE CIĘCIWY (Tylko dla trybu równomiernego)
 const chordLength = diameter * Math.sin((180 / holes) * (Math.PI / 180));
 document.getElementById('resChord').innerText = chordLength.toFixed(3);
 document.getElementById('chordCard').style.display = 'block';
@@ -283,7 +396,6 @@ absoluteAngles[i] = absoluteAngles[refIndex] + hole.angle;
 }
 points.push(calculatePoint(radius, absoluteAngles[i]));
 }
-// Cięciwa między dwoma ostatnimi otworami (tryb z rysunku)
 if (points.length >= 2) {
 const dx = points[points.length - 1].x - points[points.length - 2].x;
 const dy = points[points.length - 1].y - points[points.length - 2].y;
@@ -292,7 +404,12 @@ document.getElementById('resChord').innerText = Math.sqrt(dx * dx + dy * dy).toF
 document.getElementById('resChord').innerText = '—';
 }
 }
-points.forEach((p, index) => {
+const absPoints = points.map(p => ({ x: p.x + offX, y: p.y + offY, angle: p.angle }));
+lastExport = {
+points: absPoints,
+meta: { diameter, offX, offY, thread: threadSel, mode: currentMode }
+};
+absPoints.forEach((p, index) => {
 const row = resultsTable.insertRow();
 row.insertCell(0).innerText = `#${index + 1}`;
 let displayAngle = p.angle % 360;
@@ -303,14 +420,14 @@ row.insertCell(3).innerText = p.y.toFixed(3);
 if (currentMode === 'manual') {
 let chordText = '—';
 if (index > 0) {
-const dx = p.x - points[index - 1].x;
-const dy = p.y - points[index - 1].y;
+const dx = p.x - absPoints[index - 1].x;
+const dy = p.y - absPoints[index - 1].y;
 chordText = Math.sqrt(dx * dx + dy * dy).toFixed(3);
 }
 row.insertCell(4).innerText = chordText;
 }
 });
-drawCanvas(points, diameter);
+drawCanvas(points, diameter, !!thread);
 }
 function calculatePoint(radius, angleDeg) {
 const angleRad = angleDeg * (Math.PI / 180);
@@ -318,7 +435,7 @@ const x = radius * Math.cos(angleRad);
 const y = radius * Math.sin(angleRad);
 return {x, y, angle: angleDeg};
 }
-function drawCanvas(points, diameter) {
+function drawCanvas(points, diameter, threaded) {
 ctx.clearRect(0, 0, canvas.width, canvas.height);
 const center = canvas.width / 2;
 const margin = 30;
@@ -355,8 +472,9 @@ points.forEach((p, index) => {
 const pRad = p.angle * (Math.PI / 180);
 const drawX = center + ((diameter/2) * Math.cos(pRad)) * scale;
 const drawY = center - ((diameter/2) * Math.sin(pRad)) * scale;
+const holeR = threaded ? 5.5 : 4;
 ctx.beginPath();
-ctx.arc(drawX, drawY, 4, 0, 2 * Math.PI);
+ctx.arc(drawX, drawY, holeR, 0, 2 * Math.PI);
 ctx.fillStyle = '#1c1c1e';
 ctx.fill();
 ctx.lineWidth = 2;
@@ -372,6 +490,181 @@ ctx.textBaseline = 'middle';
 ctx.fillText(index + 1, textX, textY);
 });
 }
+function copyText(txt, btnId) {
+const btn = document.getElementById(btnId);
+const done = function() {
+const old = btn.innerText;
+btn.innerText = '✓ Skopiowano';
+setTimeout(function() { btn.innerText = old; }, 1500);
+};
+function fallback() {
+const ta = document.createElement('textarea');
+ta.value = txt;
+document.body.appendChild(ta);
+ta.select();
+try { document.execCommand('copy'); done(); }
+catch (e) { alert('Skopiuj ręcznie:\n' + txt); }
+document.body.removeChild(ta);
+}
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(txt).then(done).catch(fallback);
+} else {
+fallback();
+}
+}
+function copyCoords() {
+const m = lastExport;
+if (!m.points.length) return;
+const lines = [];
+lines.push('KALKULATOR PCD');
+lines.push('D: ' + m.meta.diameter.toFixed(3) + ' mm');
+lines.push('Liczba otworow: ' + m.points.length);
+lines.push('Srodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3));
+if (m.meta.thread) {
+const t = THREADS[m.meta.thread];
+lines.push('Gwint: ' + m.meta.thread + ' (otwor ' + t.drill.toFixed(3) + ' mm, skok ' + t.pitch + ' mm)');
+}
+m.points.forEach((p, i) => {
+lines.push('#' + (i + 1) + '  X ' + p.x.toFixed(3) + '  Y ' + p.y.toFixed(3));
+});
+copyText(lines.join('\n'), 'btnCopyCoords');
+}
+function copyGcode() {
+const m = lastExport;
+if (!m.points.length) return;
+const z = parseFloat(document.getElementById('gzDepth').value);
+const f = parseFloat(document.getElementById('gFeed').value) || 100;
+const s = parseFloat(document.getElementById('gSpeed').value) || 1200;
+const fmt = document.getElementById('gcodeFormat').value;
+const th = m.meta.thread;
+const t = th ? THREADS[th] : null;
+const out = [];
+if (fmt === 'fanuc') {
+out.push('%');
+out.push('O0001 (PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
+out.push('N10 G17 G90 G54');
+out.push('N20 M3 S' + s);
+out.push('N30 G0 Z50.');
+out.push('N40 G99 G81 Z' + z.toFixed(3) + ' R2. F' + f.toFixed(0) + '.');
+let n = 50;
+m.points.forEach(p => {
+out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
+n += 10;
+});
+out.push('N' + n + ' G80'); n += 10;
+out.push('N' + n + ' M5'); n += 10;
+out.push('N' + n + ' M30');
+out.push('%');
+} else if (fmt === 'sinumerik') {
+out.push(';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
+out.push('N10 G17 G54 G90');
+out.push('N20 M3 S' + s);
+out.push('N30 F' + f.toFixed(0));
+out.push('N40 MCALL CYCLE81(5, 0, 1, ' + z.toFixed(3) + ')');
+let n = 50;
+m.points.forEach(p => {
+out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
+n += 10;
+});
+out.push('N' + n + ' MCALL'); n += 10;
+out.push('N' + n + ' M5'); n += 10;
+out.push('N' + n + ' M30');
+} else {
+out.push('PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.');
+if (t) out.push('GWINT ' + th + ' OTWOR D' + t.drill.toFixed(3));
+m.points.forEach((p, i) => {
+out.push('X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
+});
+}
+copyText(out.join('\n'), 'btnCopyGcode');
+}
+function getPresets() {
+try { return JSON.parse(localStorage.getItem('pcdPresets') || '[]'); }
+catch (e) { return []; }
+}
+function renderPresets() {
+const box = document.getElementById('presetList');
+box.innerHTML = '';
+const presets = getPresets();
+if (!presets.length) {
+box.innerHTML = '<p class="hint">Brak zapisanych ustawień — wpisz nazwę i dotknij „Zapisz", aby zachować obecne wartości.</p>';
+return;
+}
+presets.forEach((p, i) => {
+const item = document.createElement('div');
+item.className = 'preset-item';
+const name = document.createElement('button');
+name.className = 'preset-name';
+name.innerText = p.name;
+name.onclick = function() { loadPreset(i); };
+const del = document.createElement('button');
+del.className = 'remove-btn';
+del.innerText = '✕';
+del.onclick = function() { deletePreset(i); };
+item.appendChild(name);
+item.appendChild(del);
+box.appendChild(item);
+});
+}
+function savePreset() {
+const name = document.getElementById('presetName').value.trim();
+if (!name) { alert('Podaj nazwę ustawienia, np. "Kołnierz 24 otwory"'); return; }
+const presets = getPresets();
+presets.push({
+name: name,
+mode: currentMode,
+diameter: document.getElementById('diameter').value,
+holes: document.getElementById('holes').value,
+startAngle: document.getElementById('startAngle').value,
+offsetX: document.getElementById('offsetX').value,
+offsetY: document.getElementById('offsetY').value,
+thread: document.getElementById('threadSelect').value,
+manual: JSON.parse(JSON.stringify(manualHoles))
+});
+localStorage.setItem('pcdPresets', JSON.stringify(presets));
+document.getElementById('presetName').value = '';
+renderPresets();
+}
+function deletePreset(i) {
+const p = getPresets();
+p.splice(i, 1);
+localStorage.setItem('pcdPresets', JSON.stringify(p));
+renderPresets();
+}
+function loadPreset(i) {
+const p = getPresets()[i];
+if (!p) return;
+document.getElementById('diameter').value = p.diameter;
+document.getElementById('diameterSlider').value = p.diameter;
+document.getElementById('holes').value = p.holes;
+document.getElementById('holesSlider').value = p.holes;
+document.getElementById('startAngle').value = p.startAngle;
+document.getElementById('startAngleSlider').value = p.startAngle;
+document.getElementById('offsetX').value = p.offsetX;
+document.getElementById('offsetY').value = p.offsetY;
+document.getElementById('threadSelect').value = p.thread;
+if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
+const btns = document.querySelectorAll('.tab-btn');
+btns.forEach(b => b.classList.remove('active'));
+btns[p.mode === 'manual' ? 1 : 0].classList.add('active');
+applyMode(p.mode);
+}
+function renderThreadTable() {
+const tb = document.getElementById('threadTable').getElementsByTagName('tbody')[0];
+Object.keys(THREADS).forEach(k => {
+const t = THREADS[k];
+const row = tb.insertRow();
+row.insertCell(0).innerText = k;
+row.insertCell(1).innerText = t.pitch.toFixed(3);
+row.insertCell(2).innerText = t.drill.toFixed(3);
+});
+}
+document.getElementById('offsetX').addEventListener('input', updateCalculations);
+document.getElementById('offsetY').addEventListener('input', updateCalculations);
+renderThreadTable();
+renderPresets();
 renderManualList();
 updateCalculations();
 document.getElementById('diameter').addEventListener('input', updateCalculations);
