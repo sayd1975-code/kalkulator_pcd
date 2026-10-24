@@ -1,0 +1,386 @@
+
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kalkulator PCD (Średnica Podziałowa)</title>
+<meta name="theme-color" content="#1c1c1e">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%231c1c1e'/%3E%3Ccircle cx='50' cy='50' r='33' fill='none' stroke='%233a3a3c' stroke-width='4'/%3E%3Ccircle cx='50' cy='17' r='8' fill='%2364d2ff'/%3E%3Ccircle cx='81' cy='68' r='8' fill='%2364d2ff'/%3E%3Ccircle cx='19' cy='68' r='8' fill='%2364d2ff'/%3E%3Ccircle cx='50' cy='50' r='4' fill='%238e8e93'/%3E%3C/svg%3E">
+<style>
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+margin: 0;
+padding: 0;
+background-color: #000000;
+color: #ffffff;
+display: flex;
+justify-content: center;
+}
+.container {
+width: 100%;
+max-width: 400px;
+padding: 15px;
+box-sizing: border-box;
+}
+.header { margin-bottom: 25px; }
+h1 { font-size: 26px; font-weight: 500; margin: 0 0 5px 0; line-height: 1.2; }
+h2 { font-size: 14px; color: #888888; font-weight: 400; margin: 0; }
+.panel { background-color: #1c1c1e; border-radius: 16px; padding: 20px; margin-bottom: 15px; }
+.tabs { display: flex; background: #2c2c2e; border-radius: 8px; margin-bottom: 20px; padding: 4px; }
+.tab-btn { flex: 1; padding: 8px 0; text-align: center; background: transparent; color: #8e8e93; border: none; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; }
+.tab-btn.active { background: #4c4c4e; color: #ffffff; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+.mode-section { display: none; }
+.mode-section.active { display: block; }
+.input-group { margin-bottom: 25px; }
+.input-group:last-child { margin-bottom: 0; }
+.input-group label { display: block; margin-bottom: 15px; font-size: 15px; color: #e5e5ea; }
+.input-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+input[type="range"] { flex-grow: 1; margin-right: 10px; appearance: none; height: 4px; background: #3a3a3c; border-radius: 2px; outline: none; }
+input[type="range"]::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #ffffff; border-radius: 50%; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+input[type="number"] { width: 70px; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; color: #ffffff; font-size: 15px; text-align: right; padding: 5px; outline: none; font-family: monospace; }
+select { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; color: #ffffff; font-size: 13px; padding: 5px; outline: none; flex-grow: 1; }
+.manual-holes-list { margin-top: 15px; max-height: 250px; overflow-y: auto; }
+.manual-hole-item { background: #2c2c2e; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+.manual-hole-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.manual-hole-bottom { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.manual-hole-label { font-size: 14px; color: #e5e5ea; font-weight: bold; }
+.remove-btn { background: #ff3b30; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer; font-size: 12px; }
+.add-btn { width: 100%; background: #0a84ff; color: white; border: none; border-radius: 8px; padding: 12px; font-size: 15px; font-weight: 500; margin-top: 10px; cursor: pointer; }
+.results-cards { display: flex; gap: 15px; margin-top: 25px; }
+.card { background-color: #2c2c2e; border-radius: 12px; padding: 15px; flex: 1; }
+.card-label { font-size: 12px; color: #8e8e93; margin-bottom: 8px; display: block; }
+.card-value { font-size: 18px; font-weight: 600; color: #ffffff; }
+.card-unit { font-size: 12px; color: #8e8e93; font-weight: normal; margin-top: 4px; display: block; }
+.canvas-container { display: flex; justify-content: center; align-items: center; padding: 10px 0; }
+canvas { max-width: 100%; }
+.table-header { display: flex; justify-content: space-between; align-items: flex-end; margin: 25px 0 15px 0; padding: 0 5px; }
+.table-title { font-size: 18px; font-weight: 600; margin: 0; line-height: 1.3; }
+.table-count { font-size: 13px; color: #8e8e93; text-align: right; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 5px; text-align: right; border-bottom: 1px solid #2c2c2e; font-variant-numeric: tabular-nums; }
+th { color: #8e8e93; font-weight: 400; font-size: 13px; }
+th:first-child, td:first-child { text-align: left; padding-left: 10px; }
+td:first-child { color: #8e8e93; }
+</style>
+</head>
+<body>
+<div class="container">
+<div class="header">
+<h1>Kalkulator PCD<br>(Średnica Podziałowa)</h1>
+<h2>Wyznaczanie współrzędnych otworów CNC</h2>
+</div>
+<div class="panel">
+<div class="input-group">
+<label>Średnica podziałowa D (mm)</label>
+<div class="input-row">
+<input type="range" id="diameterSlider" min="10" max="600" value="300" step="1">
+<input type="number" id="diameter" value="300">
+</div>
+</div>
+<div class="tabs">
+<button class="tab-btn active" onclick="setMode('regular')">Równomierne</button>
+<button class="tab-btn" onclick="setMode('manual')">Wymiary z rysunku</button>
+</div>
+<!-- Tryb 1: Równomierny podział -->
+<div id="regularMode" class="mode-section active">
+<div class="input-group">
+<label>Liczba otworów N</label>
+<div class="input-row">
+<input type="range" id="holesSlider" min="2" max="36" value="24" step="1">
+<input type="number" id="holes" value="24">
+</div>
+</div>
+<div class="input-group">
+<label>Kąt startowy pierwszego otworu (°)</label>
+<div class="input-row">
+<input type="range" id="startAngleSlider" min="0" max="360" value="0" step="1">
+<input type="number" id="startAngle" value="0">
+</div>
+</div>
+</div>
+<!-- Tryb 2: Ręczne definiowanie (Łańcuchowe) -->
+<div id="manualMode" class="mode-section">
+<p style="font-size: 13px; color: #8e8e93; margin-top: 0;">Dodawaj otwory tak jak na rysunku. Kąt może być podany od zera (osi X) lub jako odległość od DOWOLNEGO poprzedniego otworu.</p>
+<div class="manual-holes-list" id="manualHolesList">
+<!-- Lista generowana przez JS -->
+</div>
+<button class="add-btn" onclick="addManualHole()">+ Dodaj kolejny otwór</button>
+</div>
+<div class="results-cards">
+<div class="card">
+<span class="card-label">Promień R</span>
+<span class="card-value" id="resRadius">150.000</span>
+<span class="card-unit">mm</span>
+</div>
+<div class="card" id="stepCard">
+<span class="card-label">Krok kątowy</span>
+<span class="card-value" id="resAngleStep">15.000°</span>
+</div>
+<!-- NOWA KARTA CIĘCIWY -->
+<div class="card" id="chordCard">
+<span class="card-label" id="chordLabel">Cięciwa L</span>
+<span class="card-value" id="resChord">77.646</span>
+<span class="card-unit">mm</span>
+</div>
+</div>
+</div>
+<div class="panel canvas-container">
+<canvas id="pcdCanvas" width="320" height="320"></canvas>
+</div>
+<div class="table-header">
+<h3 class="table-title">Współrzędne<br>otworów (X / Y)</h3>
+<span class="table-count" id="holeCountDisplay">24<br>otworów</span>
+</div>
+<div class="table-container">
+<table id="resultsTable">
+<thead>
+<tr>
+<th>Otwór</th>
+<th>Kąt (°) ↓</th>
+<th>Oś X<br>(mm)</th>
+<th>Oś Y<br>(mm)</th>
+<th id="chordHeader" style="display: none;">Cięciwa<br>(mm)</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+</div>
+</div>
+<script>
+const canvas = document.getElementById('pcdCanvas');
+const ctx = canvas.getContext('2d');
+const resultsTable = document.getElementById('resultsTable').getElementsByTagName('tbody')[0];
+let currentMode = 'regular';
+let manualHoles = [
+{ angle: 0, reference: 'absolute' },
+{ angle: 17, reference: 0 },
+{ angle: 17, reference: 1 },
+{ angle: 52.5, reference: 2 }
+];
+function setMode(mode) {
+currentMode = mode;
+document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+event.target.classList.add('active');
+document.getElementById('regularMode').classList.remove('active');
+document.getElementById('manualMode').classList.remove('active');
+if(mode === 'regular') {
+document.getElementById('regularMode').classList.add('active');
+document.getElementById('stepCard').style.display = 'block';
+document.getElementById('chordCard').style.display = 'block';
+} else {
+document.getElementById('manualMode').classList.add('active');
+document.getElementById('stepCard').style.display = 'none';
+document.getElementById('chordCard').style.display = 'none';
+renderManualList();
+}
+document.getElementById('chordHeader').style.display = (mode === 'manual') ? '' : 'none';
+document.getElementById('chordLabel').innerText = (mode === 'manual') ? 'Cięciwa (ostatnia)' : 'Cięciwa L';
+updateCalculations();
+}
+function syncInputs(sliderId, inputId) {
+const slider = document.getElementById(sliderId);
+const input = document.getElementById(inputId);
+slider.addEventListener('input', () => { input.value = slider.value; updateCalculations(); });
+input.addEventListener('change', () => { slider.value = input.value; updateCalculations(); });
+}
+syncInputs('diameterSlider', 'diameter');
+syncInputs('holesSlider', 'holes');
+syncInputs('startAngleSlider', 'startAngle');
+function renderManualList() {
+const listDiv = document.getElementById('manualHolesList');
+listDiv.innerHTML = '';
+manualHoles.forEach((hole, index) => {
+const isFirst = index === 0;
+const itemDiv = document.createElement('div');
+itemDiv.className = 'manual-hole-item';
+let selectOptions = '';
+if (isFirst) {
+selectOptions = `<option value="absolute" selected>Kąt od osi X (0°)</option>`;
+} else {
+selectOptions = `<option value="absolute" ${hole.reference === 'absolute' ? 'selected' : ''}>Kąt od osi X (0°)</option>`;
+for (let i = 0; i < index; i++) {
+let isSelected = (String(hole.reference) === String(i)) ? 'selected' : '';
+selectOptions += `<option value="${i}" ${isSelected}>Kąt od otworu #${i + 1}</option>`;
+}
+}
+itemDiv.innerHTML = `
+<div class="manual-hole-top">
+<span class="manual-hole-label">Otwór #${index + 1}</span>
+${!isFirst ? `<button class="remove-btn" onclick="removeManualHole(${index})">Usuń</button>` : ''}
+</div>
+<div class="manual-hole-bottom">
+<input type="number" value="${hole.angle}" step="0.1" onchange="updateManualHole(${index}, 'angle', this.value)">
+<span style="font-size: 18px;">°</span>
+<select onchange="updateManualHole(${index}, 'reference', this.value)">
+${selectOptions}
+</select>
+</div>
+`;
+listDiv.appendChild(itemDiv);
+});
+}
+function addManualHole() {
+let lastIndex = manualHoles.length - 1;
+manualHoles.push({ angle: 10, reference: String(lastIndex) });
+renderManualList();
+updateCalculations();
+}
+function removeManualHole(index) {
+for(let i = index + 1; i < manualHoles.length; i++) {
+if(manualHoles[i].reference === String(index)) {
+manualHoles[i].reference = 'absolute';
+} else if (manualHoles[i].reference !== 'absolute' && parseInt(manualHoles[i].reference) > index) {
+manualHoles[i].reference = String(parseInt(manualHoles[i].reference) - 1);
+}
+}
+manualHoles.splice(index, 1);
+renderManualList();
+updateCalculations();
+}
+function updateManualHole(index, field, value) {
+if (field === 'angle') {
+manualHoles[index].angle = parseFloat(value) || 0;
+} else if (field === 'reference') {
+manualHoles[index].reference = value;
+}
+updateCalculations();
+}
+function updateCalculations() {
+const diameter = parseFloat(document.getElementById('diameter').value) || 0;
+const radius = diameter / 2;
+document.getElementById('resRadius').innerText = radius.toFixed(3);
+resultsTable.innerHTML = '';
+const points = [];
+if (currentMode === 'regular') {
+const holes = parseInt(document.getElementById('holes').value) || 1;
+const startAngle = parseFloat(document.getElementById('startAngle').value) || 0;
+const angleStep = 360 / holes;
+document.getElementById('resAngleStep').innerText = `${angleStep.toFixed(3)}°`;
+document.getElementById('holeCountDisplay').innerHTML = `${holes}<br>otworów`;
+// OBLICZANIE CIĘCIWY (Tylko dla trybu równomiernego)
+const chordLength = diameter * Math.sin((180 / holes) * (Math.PI / 180));
+document.getElementById('resChord').innerText = chordLength.toFixed(3);
+document.getElementById('chordCard').style.display = 'block';
+for (let i = 0; i < holes; i++) {
+const currentAngleDeg = startAngle + (i * angleStep);
+points.push(calculatePoint(radius, currentAngleDeg));
+}
+} else {
+document.getElementById('holeCountDisplay').innerHTML = `${manualHoles.length}<br>otworów`;
+document.getElementById('chordCard').style.display = 'block';
+let absoluteAngles = [];
+for(let i = 0; i < manualHoles.length; i++) {
+let hole = manualHoles[i];
+if (hole.reference === 'absolute') {
+absoluteAngles[i] = hole.angle;
+} else {
+let refIndex = parseInt(hole.reference);
+absoluteAngles[i] = absoluteAngles[refIndex] + hole.angle;
+}
+points.push(calculatePoint(radius, absoluteAngles[i]));
+}
+// Cięciwa między dwoma ostatnimi otworami (tryb z rysunku)
+if (points.length >= 2) {
+const dx = points[points.length - 1].x - points[points.length - 2].x;
+const dy = points[points.length - 1].y - points[points.length - 2].y;
+document.getElementById('resChord').innerText = Math.sqrt(dx * dx + dy * dy).toFixed(3);
+} else {
+document.getElementById('resChord').innerText = '—';
+}
+}
+points.forEach((p, index) => {
+const row = resultsTable.insertRow();
+row.insertCell(0).innerText = `#${index + 1}`;
+let displayAngle = p.angle % 360;
+if(displayAngle < 0) displayAngle += 360;
+row.insertCell(1).innerText = displayAngle.toFixed(1) + '°';
+row.insertCell(2).innerText = p.x.toFixed(3);
+row.insertCell(3).innerText = p.y.toFixed(3);
+if (currentMode === 'manual') {
+let chordText = '—';
+if (index > 0) {
+const dx = p.x - points[index - 1].x;
+const dy = p.y - points[index - 1].y;
+chordText = Math.sqrt(dx * dx + dy * dy).toFixed(3);
+}
+row.insertCell(4).innerText = chordText;
+}
+});
+drawCanvas(points, diameter);
+}
+function calculatePoint(radius, angleDeg) {
+const angleRad = angleDeg * (Math.PI / 180);
+const x = radius * Math.cos(angleRad);
+const y = radius * Math.sin(angleRad);
+return {x, y, angle: angleDeg};
+}
+function drawCanvas(points, diameter) {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+const center = canvas.width / 2;
+const margin = 30;
+const drawingRadius = (canvas.width / 2) - margin;
+const scale = drawingRadius / (diameter / 2 || 1);
+ctx.fillStyle = '#1c1c1e';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.strokeStyle = '#2c2c2e';
+ctx.lineWidth = 1;
+points.forEach(p => {
+const pRad = p.angle * (Math.PI / 180);
+const endX = center + ((diameter/2) * Math.cos(pRad)) * scale;
+const endY = center - ((diameter/2) * Math.sin(pRad)) * scale;
+ctx.beginPath();
+ctx.moveTo(center, center);
+ctx.lineTo(endX, endY);
+ctx.stroke();
+});
+ctx.beginPath();
+ctx.arc(center, center, drawingRadius, 0, 2 * Math.PI);
+ctx.strokeStyle = '#3a3a3c';
+ctx.lineWidth = 1;
+ctx.setLineDash([4, 6]);
+ctx.stroke();
+ctx.setLineDash([]);
+ctx.fillStyle = '#8e8e93';
+ctx.font = '10px -apple-system, sans-serif';
+ctx.textAlign = 'left';
+ctx.fillText('+X', canvas.width - 25, center - 10);
+ctx.textAlign = 'center';
+ctx.fillText('+Y', center + 15, 20);
+ctx.fillText('↓', center, canvas.height - 10);
+points.forEach((p, index) => {
+const pRad = p.angle * (Math.PI / 180);
+const drawX = center + ((diameter/2) * Math.cos(pRad)) * scale;
+const drawY = center - ((diameter/2) * Math.sin(pRad)) * scale;
+ctx.beginPath();
+ctx.arc(drawX, drawY, 4, 0, 2 * Math.PI);
+ctx.fillStyle = '#1c1c1e';
+ctx.fill();
+ctx.lineWidth = 2;
+ctx.strokeStyle = '#64d2ff';
+ctx.stroke();
+const textOffset = 16;
+const textX = center + (((diameter/2) * scale) + textOffset) * Math.cos(pRad);
+const textY = center - (((diameter/2) * scale) + textOffset) * Math.sin(pRad);
+ctx.fillStyle = '#ffffff';
+ctx.font = '11px -apple-system, sans-serif';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText(index + 1, textX, textY);
+});
+}
+renderManualList();
+updateCalculations();
+document.getElementById('diameter').addEventListener('input', updateCalculations);
+document.getElementById('diameterSlider').addEventListener('input', updateCalculations);
+if ('serviceWorker' in navigator) {
+window.addEventListener('load', function() {
+navigator.serviceWorker.register('sw.js').catch(function() {});
+});
+}
+</script>
+</body>
+</html>
