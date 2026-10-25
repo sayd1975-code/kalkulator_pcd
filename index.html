@@ -49,6 +49,9 @@ select { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; col
 .export-btn { flex: 1; background: #2c2c2e; color: #ffffff; border: 1px solid #3a3a3c; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .preset-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #2c2c2e; border-radius: 8px; padding: 6px 6px 6px 0; margin-bottom: 8px; }
 .preset-name { flex-grow: 1; text-align: left; background: none; border: none; color: #e5e5ea; font-size: 14px; padding: 10px 12px; cursor: pointer; }
+.tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+.tpl-btn { background: #2c2c2e; border: 1px solid #3a3a3c; color: #e5e5ea; border-radius: 6px; padding: 8px 4px; font-size: 12px; cursor: pointer; text-align: center; }
+.tpl-btn:active { background: #3a3a3c; }
 .manual-holes-list { margin-top: 15px; max-height: 250px; overflow-y: auto; }
 .manual-hole-item { background: #2c2c2e; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
 .manual-hole-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
@@ -172,6 +175,28 @@ body { background: #ffffff !important; color: #000000 !important; }
 <input type="range" id="startAngleSlider" min="0" max="360" value="0" step="1">
 <input type="number" id="startAngle" value="0">
 </div>
+</div>
+<div class="input-group">
+<label>Rozstawy typowe — szablony</label>
+<div class="tpl-grid">
+<button class="tpl-btn" onclick="applyTemplate(4, 65, 'DN15')">DN15 · 4× · PCD 65</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 75, 'DN20')">DN20 · 4× · PCD 75</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 85, 'DN25')">DN25 · 4× · PCD 85</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 100, 'DN32')">DN32 · 4× · PCD 100</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 110, 'DN40')">DN40 · 4× · PCD 110</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 125, 'DN50')">DN50 · 4× · PCD 125</button>
+<button class="tpl-btn" onclick="applyTemplate(4, 145, 'DN65')">DN65 · 4× · PCD 145</button>
+<button class="tpl-btn" onclick="applyTemplate(8, 160, 'DN80')">DN80 · 8× · PCD 160</button>
+<button class="tpl-btn" onclick="applyTemplate(8, 180, 'DN100')">DN100 · 8× · PCD 180</button>
+<button class="tpl-btn" onclick="applyTemplate(8, 210, 'DN125')">DN125 · 8× · PCD 210</button>
+<button class="tpl-btn" onclick="applyTemplate(8, 240, 'DN150')">DN150 · 8× · PCD 240</button>
+<button class="tpl-btn" onclick="applyTemplate(8, 295, 'DN200')">DN200 · 8× · PCD 295</button>
+<button class="tpl-btn" onclick="applyTemplate(3, 100, '3 otw.')">3× · PCD 100</button>
+<button class="tpl-btn" onclick="applyTemplate(6, 100, '6 otw.')">6× · PCD 100</button>
+<button class="tpl-btn" onclick="applyTemplate(12, 200, '12 otw.')">12× · PCD 200</button>
+<button class="tpl-btn" onclick="applyTemplate(16, 250, '16 otw.')">16× · PCD 250</button>
+</div>
+<p class="hint">Kołnierze wg DIN 2576 (PN16) oraz typowe rozstawy — kliknięcie ustawia liczbę otworów i PCD.</p>
 </div>
 </div>
 <!-- Tryb 2: Ręczne definiowanie (Łańcuchowe) -->
@@ -482,6 +507,15 @@ ${selectOptions}
 `;
 listDiv.appendChild(itemDiv);
 });
+}
+function applyTemplate(holes, pcd, name) {
+document.getElementById('holes').value = holes;
+document.getElementById('holesSlider').value = holes;
+document.getElementById('diameter').value = pcd;
+document.getElementById('diameterSlider').value = pcd;
+document.getElementById('startAngle').value = 0;
+document.getElementById('startAngleSlider').value = 0;
+updateCalculations();
 }
 function addManualHole() {
 let lastIndex = manualHoles.length - 1;
