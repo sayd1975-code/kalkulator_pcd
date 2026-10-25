@@ -85,6 +85,23 @@ canvas { touch-action: manipulation; }
 #collisionWarning { display: none; margin: 0; padding: 12px; border-radius: 8px; background: rgba(255, 59, 48, 0.15); border: 1px solid #ff3b30; color: #ff3b30; font-size: 13px; line-height: 1.5; }
 #collisionWarning ul { margin: 6px 0 0 0; padding-left: 18px; }
 tr.collision-row td { color: #ff3b30 !important; border-bottom-color: rgba(255, 59, 48, 0.5) !important; }
+.header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.theme-btn { background: #2c2c2e; border: 1px solid #3a3a3c; color: #ffffff; border-radius: 50%; width: 38px; height: 38px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+body.light-theme { background-color: #f2f2f7; color: #1c1c1e; }
+body.light-theme .panel { background-color: #ffffff; }
+body.light-theme h2 { color: #6d6d72; }
+body.light-theme .tabs { background: #e5e5ea; }
+body.light-theme .tab-btn { color: #6d6d72; }
+body.light-theme .tab-btn.active { background: #ffffff; color: #1c1c1e; }
+body.light-theme input[type="number"], body.light-theme input[type="text"], body.light-theme select { background: #e5e5ea; border-color: #c7c7cc; color: #1c1c1e; }
+body.light-theme input[type="range"] { background: #c7c7cc; }
+body.light-theme .card, body.light-theme .manual-hole-item, body.light-theme .group-item, body.light-theme .tpl-btn { background: #e5e5ea; }
+body.light-theme .tpl-btn { border-color: #c7c7cc; color: #1c1c1e; }
+body.light-theme .preset-name { color: #1c1c1e; }
+body.light-theme .export-btn { background: #e5e5ea; border-color: #c7c7cc; color: #1c1c1e; }
+body.light-theme .theme-btn { background: #e5e5ea; border-color: #c7c7cc; color: #1c1c1e; }
+body.light-theme .input-group label, body.light-theme .manual-hole-label, body.light-theme .group-label { color: #1c1c1e; }
+body.light-theme th, body.light-theme td { border-bottom-color: #d1d1d6; }
 #printView { display: none; }
 @media print {
 body { background: #ffffff !important; color: #000000 !important; }
@@ -115,8 +132,13 @@ body { background: #ffffff !important; color: #000000 !important; }
 <p class="pv-foot">Wygenerowano w Kalkulatorze PCD — współrzędne liczone od środka okręgu X0/Y0.</p>
 </div>
 <div class="header">
+<div class="header-row">
+<div>
 <h1>Kalkulator PCD<br>(Średnica Podziałowa)</h1>
 <h2>Wyznaczanie współrzędnych otworów CNC</h2>
+</div>
+<button class="theme-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
+</div>
 </div>
 <div class="panel">
 <div class="input-group">
@@ -752,6 +774,23 @@ if (d < bestDist) { bestDist = d; best = i; }
 });
 if (best !== -1 && bestDist <= 18) selectHole(best, false);
 }
+const THEME_KEY = 'pcdTheme';
+function canvasTheme() {
+return document.body.classList.contains('light-theme') ? { bg: '#ffffff', text: '#1c1c1e' } : { bg: '#1c1c1e', text: '#ffffff' };
+}
+function applyTheme(theme) {
+document.body.classList.toggle('light-theme', theme === 'light');
+const btn = document.getElementById('themeToggle');
+if (btn) btn.innerText = (theme === 'light') ? '\u{1F319}' : '\u2600\uFE0F';
+const meta = document.querySelector('meta[name="theme-color"]');
+if (meta) meta.setAttribute('content', (theme === 'light') ? '#f2f2f7' : '#1c1c1e');
+try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+}
+function toggleTheme() {
+applyTheme(document.body.classList.contains('light-theme') ? 'dark' : 'light');
+updateCalculations();
+}
+applyTheme((function() { try { return localStorage.getItem(THEME_KEY) || 'dark'; } catch (e) { return 'dark'; } })());
 canvas.addEventListener('click', handleCanvasPointer);
 function drawCanvas(points, diameter, threaded, collisionIdx) {
 canvasPoints = [];
@@ -769,7 +808,8 @@ if (ext > maxExtent) maxExtent = ext;
 if (maxExtent > 0) scaleBase = maxExtent;
 }
 const scale = drawingRadius / (scaleBase || 1);
-ctx.fillStyle = '#1c1c1e';
+const theme = canvasTheme();
+ctx.fillStyle = theme.bg;
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 ctx.strokeStyle = '#2c2c2e';
 ctx.lineWidth = 1;
@@ -834,7 +874,7 @@ ctx.lineTo(bx, dimY + 4);
 ctx.stroke();
 });
 ctx.textAlign = 'center';
-ctx.fillStyle = '#1c1c1e';
+ctx.fillStyle = theme.bg;
 const dText = '\u2205 ' + diameter.toFixed(1) + ' (D)';
 const dW = ctx.measureText(dText).width;
 ctx.fillRect(center - dW / 2 - 4, dimY - 7, dW + 8, 14);
@@ -858,10 +898,10 @@ if (currentMode === 'groups') holeR = Math.max(2, ((p.holeDia || 0) / 2) * scale
 canvasPoints.push({ x: drawX, y: drawY });
 ctx.beginPath();
 ctx.arc(drawX, drawY, holeR, 0, 2 * Math.PI);
-ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : '#1c1c1e';
+ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : theme.bg;
 ctx.fill();
 ctx.lineWidth = 2;
-const gColor = (p.group >= 0) ? GROUP_COLORS[p.group % GROUP_COLORS.length] : '#64d2ff';
+const gColor = (p.group >= 0) ? GROUP_COLORS[p.group % GROUP_COLORS.length] : '#0a84ff';
 const collisionSet = (collisionIdx) ? collisionIdx : null;
 if (collisionSet && collisionSet.has(index)) {
 ctx.strokeStyle = '#ff3b30';
@@ -873,7 +913,7 @@ ctx.stroke();
 const textOffset = 16;
 const textX = center + ((pR * scale) + textOffset) * Math.cos(pRad);
 const textY = center - ((pR * scale) + textOffset) * Math.sin(pRad);
-ctx.fillStyle = '#ffffff';
+ctx.fillStyle = theme.text;
 ctx.font = '11px -apple-system, sans-serif';
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
