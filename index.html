@@ -121,6 +121,8 @@ body.light-theme #gcodePreview { background: #ffffff; border-color: #c7c7cc; col
 body.light-theme .result-btn { background: #0071e3; color: #ffffff; }
 .back-btn { background: #2c2c2e; color: #8e8e93; border: 1px solid #3a3a3c; border-radius: 8px; padding: 10px 16px; font-size: 13px; font-weight: 500; cursor: pointer; margin-top: 12px; }
 body.light-theme .back-btn { background: #e5e5ea; border-color: #c7c7cc; color: #6d6d72; }
+#l900Tpl { width: 100%; box-sizing: border-box; background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 8px; color: #ffffff; font-family: monospace; font-size: 12px; padding: 10px; resize: vertical; }
+body.light-theme #l900Tpl { background: #ffffff; border-color: #c7c7cc; color: #1c1c1e; }
 #printView { display: none; }
 @media print {
 body { background: #ffffff !important; color: #000000 !important; }
@@ -348,7 +350,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <span class="mini-label">Format</span>
 <select id="gcodeFormat">
-<option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
+<option value="sinumerik">PRONUM L900 (R-parametry)</option>
 <option value="fanuc">G81 (Fanuc / Haas)</option>
 <option value="fanuc-simple">G0/G1 (Fanuc — proste)</option>
 <option value="plain">Tylko lista X Y</option>
@@ -359,6 +361,17 @@ body { background: #ffffff !important; color: #000000 !important; }
 <input type="checkbox" id="gPeck" style="width: 20px; height: 20px; flex-grow: 0;">
 <span class="mini-label">Q — skok łamania (mm)</span>
 <input type="number" id="gPeckStep" value="5" min="0.5" step="0.5">
+</div>
+<div id="l900Params" style="display: none; margin-bottom: 12px;">
+<div class="input-row" style="gap: 8px; margin-bottom: 8px;">
+<span class="mini-label">D korekcja</span>
+<input type="number" id="l900D" value="200" step="1">
+</div>
+<label style="display: block; margin-bottom: 6px; font-size: 15px; color: #e5e5ea;">Szablon cyklu L900</label>
+<textarea id="l900Tpl" rows="3" spellcheck="false">R2=0 R3={gleb} R4=1 R10=1 R11=0
+R22={cx} R23={cy} R24={promien} R25={kat_start} R26={kat_podz} R27={n} R28=130
+F{posuw}</textarea>
+<p class="hint">Sprawdź w dokumentacji, który parametr R wybiera cykl docelowy (81/83) i edytuj szablon.</p>
 </div>
 <div class="input-row" style="gap: 8px;">
 <span class="mini-label">Z</span>
@@ -461,6 +474,8 @@ gSpeed: document.getElementById('gSpeed').value,
 gPeck: document.getElementById('gPeck').checked,
 gPeckStep: document.getElementById('gPeckStep').value,
 gClearZ: document.getElementById('gClearZ').value,
+l900D: document.getElementById('l900D').value,
+l900Tpl: document.getElementById('l900Tpl').value,
 manual: manualHoles,
 groups: pcdGroups,
 partDiameter: document.getElementById('partDiameter').value
@@ -484,6 +499,9 @@ if (s.gSpeed) document.getElementById('gSpeed').value = s.gSpeed;
 if (s.gPeck !== undefined) document.getElementById('gPeck').checked = !!s.gPeck;
 if (s.gPeckStep) document.getElementById('gPeckStep').value = s.gPeckStep;
 if (s.gClearZ) document.getElementById('gClearZ').value = s.gClearZ;
+if (s.l900D) document.getElementById('l900D').value = s.l900D;
+if (s.l900Tpl) document.getElementById('l900Tpl').value = s.l900Tpl;
+syncL900Visibility();
 if (s.manual && s.manual.length) manualHoles = JSON.parse(JSON.stringify(s.manual));
 if (s.groups && s.groups.length) pcdGroups = JSON.parse(JSON.stringify(s.groups));
 if (s.partDiameter) { document.getElementById('partDiameter').value = s.partDiameter; document.getElementById('partDiameterSlider').value = s.partDiameter; }
@@ -1271,24 +1289,48 @@ out.push('N' + n + ' M5'); n += 10;
 out.push('N' + n + ' M30');
 out.push('%');
 } else if (fmt === 'sinumerik') {
+const dcorr = parseFloat(document.getElementById('l900D').value) || 200;
+const tpl = document.getElementById('l900Tpl').value || 'R2=0 R3={gleb} R4=1 R10=1 R11=0\nR22={cx} R23={cy} R24={promien} R25={kat_start} R26={kat_podz} R27={n} R28=130\nF{posuw}';
+const clr = Math.abs(parseFloat(document.getElementById('gClearZ').value) || 20);
+const fill = (line, v) => line
+.replace(/\{gleb\}/g, z.toFixed(3))
+.replace(/\{cx\}/g, v.cx.toFixed(3))
+.replace(/\{cy\}/g, v.cy.toFixed(3))
+.replace(/\{promien\}/g, v.r.toFixed(3))
+.replace(/\{kat_start\}/g, v.a0.toFixed(3))
+.replace(/\{kat_podz\}/g, v.step.toFixed(3))
+.replace(/\{n\}/g, String(v.n))
+.replace(/\{posuw\}/g, f.toFixed(0));
 out.push(';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
-if (m.meta.groups) {
-m.meta.groups.forEach((g, gi) => {
-out.push(';(GRUPA ' + (gi + 1) + ': ' + g.holes + 'x D' + g.holeDia.toFixed(3) + ' PCD ' + g.pcd.toFixed(3) + ')');
-});
-}
 if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
-out.push('N10 G17 G54 G90');
-out.push('N20 M3 S' + s);
-out.push('N30 F' + f.toFixed(0));
-out.push(pec ? ('N40 MCALL CYCLE83(5, 0, 1, ' + z.toFixed(3) + ', ' + z.toFixed(3) + ', ' + q.toFixed(3) + ', 1, 0)') : ('N40 MCALL CYCLE81(5, 0, 1, ' + z.toFixed(3) + ')'));
-let n = 50;
-m.points.forEach(p => {
-out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
-n += 10;
+out.push('N10 G17 G90 G54 D' + dcorr);
+out.push('N20 S' + s + ' M3');
+out.push('N30 G0 Z' + clr.toFixed(1));
+let n = 40;
+if (currentMode === 'groups' && m.meta.groups) {
+m.meta.groups.forEach((g, gi) => {
+out.push('N' + n + ' (G' + (gi + 1) + ')'); n += 10;
+const v = { cx: m.meta.offX, cy: m.meta.offY, r: g.pcd / 2, a0: g.startAngle, step: 360 / g.holes, n: g.holes };
+tpl.split('\n').forEach(line => {
+out.push('N' + n + ' ' + fill(line.trim(), v)); n += 10;
 });
-out.push('N' + n + ' MCALL'); n += 10;
-out.push('N' + n + ' M5'); n += 10;
+out.push('N' + n + ' L900'); n += 10;
+});
+} else if (currentMode === 'manual') {
+out.push('N' + n + ' (TRYB RECZNY - UZYJ FORMATU G0/G1)'); n += 10;
+m.points.forEach(p => {
+out.push('N' + n + ' G0 X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3)); n += 10;
+});
+} else {
+const holes = parseInt(document.getElementById('holes').value) || 1;
+const startAngle = parseFloat(document.getElementById('startAngle').value) || 0;
+const v = { cx: m.meta.offX, cy: m.meta.offY, r: m.meta.diameter / 2, a0: startAngle, step: 360 / holes, n: holes };
+tpl.split('\n').forEach(line => {
+out.push('N' + n + ' ' + fill(line.trim(), v)); n += 10;
+});
+out.push('N' + n + ' L900'); n += 10;
+}
+out.push('N' + n + ' G0 Z' + clr.toFixed(1) + ' M5'); n += 10;
 out.push('N' + n + ' M30');
 } else {
 out.push('PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.');
@@ -1324,6 +1366,8 @@ gSpeed: document.getElementById('gSpeed').value,
 gPeck: document.getElementById('gPeck').checked,
 gPeckStep: document.getElementById('gPeckStep').value,
 gClearZ: document.getElementById('gClearZ').value,
+l900D: document.getElementById('l900D').value,
+l900Tpl: document.getElementById('l900Tpl').value,
 manual: JSON.parse(JSON.stringify(manualHoles)),
 groups: JSON.parse(JSON.stringify(pcdGroups)),
 partDiameter: document.getElementById('partDiameter').value
@@ -1382,6 +1426,8 @@ if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
 if (p.gPeck !== undefined) document.getElementById('gPeck').checked = !!p.gPeck;
 if (p.gPeckStep) document.getElementById('gPeckStep').value = p.gPeckStep;
 if (p.gClearZ) document.getElementById('gClearZ').value = p.gClearZ;
+if (p.l900D) document.getElementById('l900D').value = p.l900D;
+if (p.l900Tpl) document.getElementById('l900Tpl').value = p.l900Tpl;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
 if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
 if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
@@ -1444,6 +1490,8 @@ gSpeed: document.getElementById('gSpeed').value,
 gPeck: document.getElementById('gPeck').checked,
 gPeckStep: document.getElementById('gPeckStep').value,
 gClearZ: document.getElementById('gClearZ').value,
+l900D: document.getElementById('l900D').value,
+l900Tpl: document.getElementById('l900Tpl').value,
 manual: JSON.parse(JSON.stringify(manualHoles)),
 groups: JSON.parse(JSON.stringify(pcdGroups)),
 partDiameter: document.getElementById('partDiameter').value
@@ -1477,6 +1525,8 @@ if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
 if (p.gPeck !== undefined) document.getElementById('gPeck').checked = !!p.gPeck;
 if (p.gPeckStep) document.getElementById('gPeckStep').value = p.gPeckStep;
 if (p.gClearZ) document.getElementById('gClearZ').value = p.gClearZ;
+if (p.l900D) document.getElementById('l900D').value = p.l900D;
+if (p.l900Tpl) document.getElementById('l900Tpl').value = p.l900Tpl;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
 if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
 if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
@@ -1502,13 +1552,19 @@ renderPresets();
 renderHistory();
 restoreState();
 if (document.getElementById('gcodeFormat')) {
-document.getElementById('gcodeFormat').addEventListener('change', saveState);
+document.getElementById('gcodeFormat').addEventListener('change', function() { syncL900Visibility(); saveState(); });
+function syncL900Visibility() {
+const isL900 = document.getElementById('gcodeFormat').value === 'sinumerik';
+document.getElementById('l900Params').style.display = isL900 ? 'block' : 'none';
+}
 document.getElementById('gzDepth').addEventListener('change', saveState);
 document.getElementById('gFeed').addEventListener('change', saveState);
 document.getElementById('gSpeed').addEventListener('change', saveState);
 document.getElementById('gPeck').addEventListener('change', saveState);
 document.getElementById('gPeckStep').addEventListener('change', saveState);
 document.getElementById('gClearZ').addEventListener('change', saveState);
+document.getElementById('l900D').addEventListener('change', saveState);
+document.getElementById('l900Tpl').addEventListener('change', saveState);
 }
 if (!localStorage.getItem(STATE_KEY)) {
 renderManualList();
