@@ -74,6 +74,11 @@ td:first-child { color: #8e8e93; }
 tr.hl-row { background: rgba(10, 132, 255, 0.25); }
 tr.hl-row td { border-bottom-color: rgba(10, 132, 255, 0.5); }
 canvas { touch-action: manipulation; }
+.group-item { background: #2c2c2e; padding: 12px; border-radius: 8px; margin-bottom: 10px; }
+.group-item-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.group-label { font-size: 14px; color: #e5e5ea; font-weight: bold; flex-grow: 1; }
+.group-color { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
+.group-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; }
 #printView { display: none; }
 @media print {
 body { background: #ffffff !important; color: #000000 !important; }
@@ -147,6 +152,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <div class="tabs">
 <button class="tab-btn active" onclick="setMode('regular')">Równomierne</button>
 <button class="tab-btn" onclick="setMode('manual')">Wymiary z rysunku</button>
+<button class="tab-btn" onclick="setMode('groups')">Grupy PCD</button>
 </div>
 <!-- Tryb 1: Równomierny podział -->
 <div id="regularMode" class="mode-section active">
@@ -172,6 +178,21 @@ body { background: #ffffff !important; color: #000000 !important; }
 <!-- Lista generowana przez JS -->
 </div>
 <button class="add-btn" onclick="addManualHole()">+ Dodaj kolejny otwór</button>
+</div>
+<!-- Tryb 3: Grupy PCD -->
+<div id="groupsMode" class="mode-section">
+<p style="font-size: 13px; color: #8e8e93; margin-top: 0;">Zdefiniuj kilka okręgów PCD w jednym detalu — każda grupa ma własną liczbę otworów, średnicę otworu, PCD i kąt startowy.</p>
+<div class="input-group">
+<label>Średnica detalu — materiał (mm)</label>
+<div class="input-row">
+<input type="range" id="partDiameterSlider" min="10" max="600" value="150" step="1">
+<input type="number" id="partDiameter" value="150">
+</div>
+</div>
+<div id="groupsList">
+<!-- Lista grup generowana przez JS -->
+</div>
+<button class="add-btn" onclick="addGroup()">+ Dodaj grupę</button>
 </div>
 <div class="results-cards">
 <div class="card">
@@ -210,6 +231,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <th>Kąt (°) ↓</th>
 <th>Oś X<br>(mm)</th>
 <th>Oś Y<br>(mm)</th>
+<th id="holeDiaHeader" style="display: none;">∅<br>(mm)</th>
 <th id="chordHeader" style="display: none;">Cięciwa<br>(mm)</th>
 </tr>
 </thead>
@@ -299,6 +321,11 @@ let manualHoles = [
 let lastExport = { points: [], meta: null };
 let selectedHole = -1;
 let canvasPoints = [];
+const GROUP_COLORS = ['#64d2ff', '#ffd60a', '#bf5af2', '#32d74b', '#ff9f0a', '#ff375f', '#5e5ce6', '#00c7be'];
+let pcdGroups = [
+{ holes: 6, holeDia: 8, pcd: 80, startAngle: 0 },
+{ holes: 4, holeDia: 6, pcd: 50, startAngle: 45 }
+];
 const STATE_KEY = 'pcdAppState';
 function saveState() {
 try {
@@ -314,7 +341,9 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
-manual: manualHoles
+manual: manualHoles,
+groups: pcdGroups,
+partDiameter: document.getElementById('partDiameter').value
 }));
 } catch (e) {}
 }
@@ -333,10 +362,12 @@ if (s.gzDepth) document.getElementById('gzDepth').value = s.gzDepth;
 if (s.gFeed) document.getElementById('gFeed').value = s.gFeed;
 if (s.gSpeed) document.getElementById('gSpeed').value = s.gSpeed;
 if (s.manual && s.manual.length) manualHoles = JSON.parse(JSON.stringify(s.manual));
+if (s.groups && s.groups.length) pcdGroups = JSON.parse(JSON.stringify(s.groups));
+if (s.partDiameter) { document.getElementById('partDiameter').value = s.partDiameter; document.getElementById('partDiameterSlider').value = s.partDiameter; }
 const btns = document.querySelectorAll('.tab-btn');
 if (s.currentMode) {
 btns.forEach(b => b.classList.remove('active'));
-btns[s.currentMode === 'manual' ? 1 : 0].classList.add('active');
+btns[s.currentMode === 'manual' ? 1 : s.currentMode === 'groups' ? 2 : 0].classList.add('active');
 }
 applyMode(s.currentMode || 'regular');
 }
@@ -348,14 +379,16 @@ applyMode(mode);
 function applyMode(mode) {
 currentMode = mode;
 document.getElementById('regularMode').classList.toggle('active', mode === 'regular');
-document.getElementById('manualMode').classList.toggle('active', mode !== 'regular');
+document.getElementById('manualMode').classList.toggle('active', mode === 'manual');
+document.getElementById('groupsMode').classList.toggle('active', mode === 'groups');
 if(mode === 'regular') {
 document.getElementById('stepCard').style.display = 'block';
 document.getElementById('chordCard').style.display = 'block';
 } else {
 document.getElementById('stepCard').style.display = 'none';
 document.getElementById('chordCard').style.display = 'none';
-renderManualList();
+if (mode === 'manual') renderManualList();
+if (mode === 'groups') renderGroupsList();
 }
 document.getElementById('chordHeader').style.display = (mode === 'manual') ? '' : 'none';
 document.getElementById('chordLabel').innerText = (mode === 'manual') ? 'Cięciwa (ostatnia)' : 'Cięciwa L';
@@ -370,6 +403,49 @@ input.addEventListener('change', () => { slider.value = input.value; updateCalcu
 syncInputs('diameterSlider', 'diameter');
 syncInputs('holesSlider', 'holes');
 syncInputs('startAngleSlider', 'startAngle');
+syncInputs('partDiameterSlider', 'partDiameter');
+function renderGroupsList() {
+const listDiv = document.getElementById('groupsList');
+listDiv.innerHTML = '';
+pcdGroups.forEach((g, index) => {
+const color = GROUP_COLORS[index % GROUP_COLORS.length];
+const itemDiv = document.createElement('div');
+itemDiv.className = 'group-item';
+itemDiv.innerHTML = `
+<div class="group-item-top">
+<span class="group-label"><span class="group-color" style="background: ${color};"></span>Grupa ${index + 1}: ${g.holes}×∅${g.holeDia}, PCD ${g.pcd}</span>
+<button class="remove-btn" onclick="removeGroup(${index})">Usuń</button>
+</div>
+<div class="group-grid">
+<span class="mini-label">Liczba otworów</span>
+<input type="number" value="${g.holes}" min="1" max="36" step="1" onchange="updateGroup(${index}, 'holes', this.value)">
+<span class="mini-label">Średnica otworu ∅ (mm)</span>
+<input type="number" value="${g.holeDia}" min="0.5" step="0.5" onchange="updateGroup(${index}, 'holeDia', this.value)">
+<span class="mini-label">PCD (mm)</span>
+<input type="number" value="${g.pcd}" min="5" step="1" onchange="updateGroup(${index}, 'pcd', this.value)">
+<span class="mini-label">Kąt startowy (°)</span>
+<input type="number" value="${g.startAngle}" step="1" onchange="updateGroup(${index}, 'startAngle', this.value)">
+</div>
+`;
+listDiv.appendChild(itemDiv);
+});
+}
+function addGroup() {
+pcdGroups.push({ holes: 6, holeDia: 6, pcd: 40, startAngle: 0 });
+renderGroupsList();
+updateCalculations();
+}
+function removeGroup(index) {
+pcdGroups.splice(index, 1);
+renderGroupsList();
+updateCalculations();
+}
+function updateGroup(index, field, value) {
+if (field === 'holes') pcdGroups[index].holes = Math.max(1, parseInt(value) || 1);
+else pcdGroups[index][field] = parseFloat(value) || 0;
+renderGroupsList();
+updateCalculations();
+}
 function renderManualList() {
 const listDiv = document.getElementById('manualHolesList');
 listDiv.innerHTML = '';
@@ -482,10 +558,35 @@ document.getElementById('resChord').innerText = Math.sqrt(dx * dx + dy * dy).toF
 document.getElementById('resChord').innerText = '—';
 }
 }
-const absPoints = points.map(p => ({ x: p.x + offX, y: p.y + offY, angle: p.angle }));
+if (currentMode === 'groups') {
+let totalHoles = 0;
+pcdGroups.forEach(g => { totalHoles += Math.max(1, parseInt(g.holes) || 1); });
+document.getElementById('holeCountDisplay').innerHTML = `${totalHoles}<br>otworów`;
+let holeCounter = 0;
+pcdGroups.forEach((g, gi) => {
+const gHoles = Math.max(1, parseInt(g.holes) || 1);
+const gPcdRadius = (parseFloat(g.pcd) || 0) / 2;
+const gStep = 360 / gHoles;
+for (let i = 0; i < gHoles; i++) {
+const pt = calculatePoint(gPcdRadius, (parseFloat(g.startAngle) || 0) + i * gStep);
+pt.group = gi;
+pt.holeDia = parseFloat(g.holeDia) || 0;
+pt.label = 'G' + (gi + 1) + '.' + (i + 1);
+pt.number = ++holeCounter;
+points.push(pt);
+}
+});
+}
+const absPoints = points.map(p => ({ x: p.x + offX, y: p.y + offY, angle: p.angle, group: (p.group !== undefined ? p.group : -1), holeDia: p.holeDia, label: p.label, number: p.number }));
 lastExport = {
 points: absPoints,
-meta: { diameter, offX, offY, thread: threadSel, mode: currentMode }
+meta: { diameter, offX, offY, thread: threadSel, mode: currentMode,
+groups: (currentMode === 'groups') ? pcdGroups.map(g => ({
+holes: Math.max(1, parseInt(g.holes) || 1),
+holeDia: parseFloat(g.holeDia) || 0,
+pcd: parseFloat(g.pcd) || 0,
+startAngle: parseFloat(g.startAngle) || 0
+})) : null }
 };
 absPoints.forEach((p, index) => {
 const row = resultsTable.insertRow();
@@ -498,6 +599,7 @@ if(displayAngle < 0) displayAngle += 360;
 row.insertCell(1).innerText = displayAngle.toFixed(1) + '°';
 row.insertCell(2).innerText = p.x.toFixed(3);
 row.insertCell(3).innerText = p.y.toFixed(3);
+document.getElementById('chordHeader').style.display = (currentMode === 'manual') ? '' : 'none';
 if (currentMode === 'manual') {
 let chordText = '—';
 if (index > 0) {
@@ -506,8 +608,11 @@ const dy = p.y - absPoints[index - 1].y;
 chordText = Math.sqrt(dx * dx + dy * dy).toFixed(3);
 }
 row.insertCell(4).innerText = chordText;
+} else if (currentMode === 'groups') {
+row.insertCell(4).innerText = (p.holeDia || 0).toFixed(1);
 }
 });
+document.getElementById('holeDiaHeader').style.display = (currentMode === 'groups') ? '' : 'none';
 drawCanvas(points, diameter, !!thread);
 saveState();
 }
@@ -544,7 +649,16 @@ ctx.clearRect(0, 0, canvas.width, canvas.height);
 const center = canvas.width / 2;
 const margin = 30;
 const drawingRadius = (canvas.width / 2) - margin;
-const scale = drawingRadius / (diameter / 2 || 1);
+let scaleBase = diameter / 2;
+if (currentMode === 'groups') {
+let maxExtent = 0;
+pcdGroups.forEach(g => {
+const ext = (parseFloat(g.pcd) || 0) / 2 + (parseFloat(g.holeDia) || 0) / 2;
+if (ext > maxExtent) maxExtent = ext;
+});
+if (maxExtent > 0) scaleBase = maxExtent;
+}
+const scale = drawingRadius / (scaleBase || 1);
 ctx.fillStyle = '#1c1c1e';
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 ctx.strokeStyle = '#2c2c2e';
@@ -558,6 +672,18 @@ ctx.moveTo(center, center);
 ctx.lineTo(endX, endY);
 ctx.stroke();
 });
+if (currentMode === 'groups') {
+pcdGroups.forEach((g, gi) => {
+const rPcd = ((parseFloat(g.pcd) || 0) / 2) * scale;
+if (rPcd <= 0) return;
+ctx.beginPath();
+ctx.arc(center, center, rPcd, 0, 2 * Math.PI);
+ctx.strokeStyle = GROUP_COLORS[gi % GROUP_COLORS.length] + '80';
+ctx.setLineDash([3, 5]);
+ctx.stroke();
+ctx.setLineDash([]);
+});
+}
 ctx.beginPath();
 ctx.arc(center, center, drawingRadius, 0, 2 * Math.PI);
 ctx.strokeStyle = '#3a3a3c';
@@ -614,25 +740,28 @@ ctx.fillText('+Y', center + 15, 20);
 ctx.fillText('↓', center, canvas.height - 10);
 points.forEach((p, index) => {
 const pRad = p.angle * (Math.PI / 180);
-const drawX = center + ((diameter/2) * Math.cos(pRad)) * scale;
-const drawY = center - ((diameter/2) * Math.sin(pRad)) * scale;
-const holeR = threaded ? 5.5 : 4;
+const pR = (currentMode === 'groups') ? ((p.group >= 0 && lastExport.meta && lastExport.meta.groups) ? (lastExport.meta.groups[p.group].pcd / 2) : 0) : (diameter / 2);
+const drawX = center + (pR * Math.cos(pRad)) * scale;
+const drawY = center - (pR * Math.sin(pRad)) * scale;
+let holeR = threaded ? 5.5 : 4;
+if (currentMode === 'groups') holeR = Math.max(2, ((p.holeDia || 0) / 2) * scale);
 canvasPoints.push({ x: drawX, y: drawY });
 ctx.beginPath();
 ctx.arc(drawX, drawY, holeR, 0, 2 * Math.PI);
 ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : '#1c1c1e';
 ctx.fill();
 ctx.lineWidth = 2;
-ctx.strokeStyle = (index === selectedHole) ? '#ffffff' : '#64d2ff';
+const gColor = (p.group >= 0) ? GROUP_COLORS[p.group % GROUP_COLORS.length] : '#64d2ff';
+ctx.strokeStyle = (index === selectedHole) ? '#ffffff' : gColor;
 ctx.stroke();
 const textOffset = 16;
-const textX = center + (((diameter/2) * scale) + textOffset) * Math.cos(pRad);
-const textY = center - (((diameter/2) * scale) + textOffset) * Math.sin(pRad);
+const textX = center + ((pR * scale) + textOffset) * Math.cos(pRad);
+const textY = center - ((pR * scale) + textOffset) * Math.sin(pRad);
 ctx.fillStyle = '#ffffff';
 ctx.font = '11px -apple-system, sans-serif';
 ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
-ctx.fillText(index + 1, textX, textY);
+ctx.fillText(currentMode === 'groups' ? (p.label || (index + 1)) : (index + 1), textX, textY);
 });
 }
 function printResult() {
@@ -777,7 +906,14 @@ const t = th ? THREADS[th] : null;
 const out = [];
 if (fmt === 'fanuc') {
 out.push('%');
+if (m.meta.groups) {
+out.push('O0001 (PCD GRUPY / ' + m.points.length + ' OTW.)');
+m.meta.groups.forEach((g, gi) => {
+out.push('(GRUPA ' + (gi + 1) + ': ' + g.holes + 'x D' + g.holeDia.toFixed(3) + ' PCD ' + g.pcd.toFixed(3) + ')');
+});
+} else {
 out.push('O0001 (PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+}
 if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
 out.push('N10 G17 G90 G54');
 out.push('N20 M3 S' + s);
@@ -785,7 +921,7 @@ out.push('N30 G0 Z50.');
 out.push('N40 G99 G81 Z' + z.toFixed(3) + ' R2. F' + f.toFixed(0) + '.');
 let n = 50;
 m.points.forEach(p => {
-out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
+out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3) + (m.meta.groups ? ' (G' + (p.group + 1) + ')' : ''));
 n += 10;
 });
 out.push('N' + n + ' G80'); n += 10;
@@ -794,6 +930,11 @@ out.push('N' + n + ' M30');
 out.push('%');
 } else if (fmt === 'sinumerik') {
 out.push(';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+if (m.meta.groups) {
+m.meta.groups.forEach((g, gi) => {
+out.push(';(GRUPA ' + (gi + 1) + ': ' + g.holes + 'x D' + g.holeDia.toFixed(3) + ' PCD ' + g.pcd.toFixed(3) + ')');
+});
+}
 if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
 out.push('N10 G17 G54 G90');
 out.push('N20 M3 S' + s);
@@ -838,7 +979,9 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
-manual: JSON.parse(JSON.stringify(manualHoles))
+manual: JSON.parse(JSON.stringify(manualHoles)),
+groups: JSON.parse(JSON.stringify(pcdGroups)),
+partDiameter: document.getElementById('partDiameter').value
 };
 const h = getHistory();
 h.unshift(entry);
@@ -892,9 +1035,11 @@ if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
 if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
 if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
+if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
+if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
 const btns = document.querySelectorAll('.tab-btn');
 btns.forEach(b => b.classList.remove('active'));
-btns[p.mode === 'manual' ? 1 : 0].classList.add('active');
+btns[p.mode === 'manual' ? 1 : p.mode === 'groups' ? 2 : 0].classList.add('active');
 applyMode(p.mode);
 }
 function deleteHistory(i) {
@@ -948,7 +1093,9 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
-manual: JSON.parse(JSON.stringify(manualHoles))
+manual: JSON.parse(JSON.stringify(manualHoles)),
+groups: JSON.parse(JSON.stringify(pcdGroups)),
+partDiameter: document.getElementById('partDiameter').value
 });
 localStorage.setItem('pcdPresets', JSON.stringify(presets));
 document.getElementById('presetName').value = '';
@@ -977,9 +1124,11 @@ if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
 if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
 if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
+if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
+if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
 const btns = document.querySelectorAll('.tab-btn');
 btns.forEach(b => b.classList.remove('active'));
-btns[p.mode === 'manual' ? 1 : 0].classList.add('active');
+btns[p.mode === 'manual' ? 1 : p.mode === 'groups' ? 2 : 0].classList.add('active');
 applyMode(p.mode);
 }
 function renderThreadTable() {
