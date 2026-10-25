@@ -49,6 +49,10 @@ select { background: #2c2c2e; border: 1px solid #3a3a3c; border-radius: 6px; col
 .export-btn { flex: 1; background: #2c2c2e; color: #ffffff; border: 1px solid #3a3a3c; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 500; cursor: pointer; }
 .preset-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: #2c2c2e; border-radius: 8px; padding: 6px 6px 6px 0; margin-bottom: 8px; }
 .preset-name { flex-grow: 1; text-align: left; background: none; border: none; color: #e5e5ea; font-size: 14px; padding: 10px 12px; cursor: pointer; }
+.collapse-btn { width: 100%; min-height: 48px; background: #2c2c2e; color: #ffffff; border: 1px solid #3a3a3c; border-radius: 8px; padding: 12px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+body.light-theme .collapse-btn { background: #e5e5ea; border-color: #c7c7cc; color: #1c1c1e; }
+.collapse-body { display: none; }
+.collapse-body.open { display: block; }
 .tpl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
 .tpl-btn { background: #2c2c2e; border: 1px solid #3a3a3c; color: #e5e5ea; border-radius: 6px; padding: 8px 4px; font-size: 12px; cursor: pointer; text-align: center; }
 .tpl-btn:active { background: #3a3a3c; }
@@ -214,6 +218,8 @@ body { background: #ffffff !important; color: #000000 !important; }
 </div>
 </div>
 <div class="input-group">
+<button class="collapse-btn" id="btnTplToggle" onclick="toggleCollapse('tpl', 'pcdTemplatesOpen')">📏 Rozstawy typowe <span id="tplArrow">▶</span></button>
+<div class="collapse-body" id="tplBody">
 <label>Rozstawy typowe — szablony</label>
 <div class="tpl-grid">
 <button class="tpl-btn" onclick="applyTemplate(4, 65, 'DN15')">DN15 · 4× · PCD 65</button>
@@ -234,6 +240,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <button class="tpl-btn" onclick="applyTemplate(16, 250, '16 otw.')">16× · PCD 250</button>
 </div>
 <p class="hint">Kołnierze wg DIN 2576 (PN16) oraz typowe rozstawy — kliknięcie ustawia liczbę otworów i PCD.</p>
+</div>
 </div>
 </div>
 <!-- Tryb 2: Ręczne definiowanie (Łańcuchowe) -->
@@ -291,6 +298,8 @@ body { background: #ffffff !important; color: #000000 !important; }
 </div>
 </div>
 </div>
+<button class="collapse-btn" id="btnThreadsToggle" onclick="toggleCollapse('threads', 'pcdThreadsOpen')" style="margin-bottom: 10px;">🔩 Tabela gwintów <span id="threadsArrow">▶</span></button>
+<div class="collapse-body" id="threadsBody">
 <div class="panel">
 <h3 class="sub">🔧 Gwinty metryczne — środek pod gwint (wiertło)</h3>
 <table id="threadTable">
@@ -304,6 +313,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <tbody></tbody>
 </table>
 <p class="hint">Wartości dla gwintów zwykłych (głównych). Cykl gwintowania: G84 (Fanuc) / CYCLE84 (Sinumerik).</p>
+</div>
 </div>
 </section>
 <section id="sectionPresety" class="app-section">
@@ -799,6 +809,22 @@ if (d < bestDist) { bestDist = d; best = i; }
 });
 if (best !== -1 && bestDist <= 18) selectHole(best, false);
 }
+function toggleCollapse(name, key) {
+const body = document.getElementById(name + 'Body');
+const open = !body.classList.contains('open');
+body.classList.toggle('open', open);
+document.getElementById(name + 'Arrow').innerText = open ? '▼' : '▶';
+try { localStorage.setItem(key, open ? '1' : '0'); } catch (e) {}
+}
+function initCollapse(name, key) {
+let open = false;
+try { open = localStorage.getItem(key) === '1'; } catch (e) {}
+const body = document.getElementById(name + 'Body');
+body.classList.toggle('open', open);
+document.getElementById(name + 'Arrow').innerText = open ? '▼' : '▶';
+}
+initCollapse('tpl', 'pcdTemplatesOpen');
+initCollapse('threads', 'pcdThreadsOpen');
 const SECTION_KEY = 'pcdSection';
 function setSection(name) {
 if (!['Dane', 'Presety', 'Gkod', 'Wyniki'].includes(name)) name = 'Dane';
