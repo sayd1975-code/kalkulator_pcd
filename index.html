@@ -85,6 +85,14 @@ canvas { touch-action: manipulation; }
 #collisionWarning { display: none; margin: 0; padding: 12px; border-radius: 8px; background: rgba(255, 59, 48, 0.15); border: 1px solid #ff3b30; color: #ff3b30; font-size: 13px; line-height: 1.5; }
 #collisionWarning ul { margin: 6px 0 0 0; padding-left: 18px; }
 tr.collision-row td { color: #ff3b30 !important; border-bottom-color: rgba(255, 59, 48, 0.5) !important; }
+.section-nav { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px; }
+.nav-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; min-height: 48px; padding: 8px 4px; background: #2c2c2e; color: #8e8e93; border: 1px solid #3a3a3c; border-radius: 10px; font-size: 12px; font-weight: 500; cursor: pointer; }
+.nav-btn .nav-icon { font-size: 20px; line-height: 1; }
+.nav-btn.active { background: #0a84ff; color: #ffffff; border-color: #0a84ff; }
+body.light-theme .nav-btn { background: #e5e5ea; border-color: #c7c7cc; color: #6d6d72; }
+body.light-theme .nav-btn.active { background: #0a84ff; border-color: #0a84ff; color: #ffffff; }
+.app-section { display: none; }
+.app-section.active { display: block; }
 .header-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
 .theme-btn { background: #2c2c2e; border: 1px solid #3a3a3c; color: #ffffff; border-radius: 50%; width: 38px; height: 38px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
 body.light-theme { background-color: #f2f2f7; color: #1c1c1e; }
@@ -140,6 +148,13 @@ body { background: #ffffff !important; color: #000000 !important; }
 <button class="theme-btn" id="themeToggle" onclick="toggleTheme()">🌙</button>
 </div>
 </div>
+<nav class="section-nav">
+<button class="nav-btn active" id="navDane" onclick="setSection('Dane')"><span class="nav-icon">📐</span>Dane</button>
+<button class="nav-btn" id="navPresety" onclick="setSection('Presety')"><span class="nav-icon">💾</span>Presety</button>
+<button class="nav-btn" id="navGkod" onclick="setSection('Gkod')"><span class="nav-icon">⚙️</span>G-kod</button>
+<button class="nav-btn" id="navWyniki" onclick="setSection('Wyniki')"><span class="nav-icon">📊</span>Wyniki</button>
+</nav>
+<section id="sectionDane" class="app-section active">
 <div class="panel">
 <div class="input-group">
 <label>Średnica podziałowa D (mm)</label>
@@ -276,6 +291,62 @@ body { background: #ffffff !important; color: #000000 !important; }
 </div>
 </div>
 </div>
+<div class="panel">
+<h3 class="sub">🔧 Gwinty metryczne — środek pod gwint (wiertło)</h3>
+<table id="threadTable">
+<thead>
+<tr>
+<th>Gwint</th>
+<th>Skok (mm)</th>
+<th>Otwór (mm)</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+<p class="hint">Wartości dla gwintów zwykłych (głównych). Cykl gwintowania: G84 (Fanuc) / CYCLE84 (Sinumerik).</p>
+</div>
+</section>
+<section id="sectionPresety" class="app-section">
+<div class="panel">
+<h3 class="sub">💾 Zapisane ustawienia</h3>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<input type="text" id="presetName" placeholder="np. Kołnierz 24 otwory">
+<button class="btn-small" onclick="savePreset()">Zapisz</button>
+<button class="btn-small" onclick="saveHistory()">Zapisz do historii</button>
+</div>
+<div id="presetList"></div>
+<h3 class="sub" style="margin-top: 20px;">🕘 Ostatnie detale</h3>
+<div id="historyList"></div>
+</div>
+</section>
+<section id="sectionGkod" class="app-section">
+<div class="panel">
+<h3 class="sub">📤 Eksport do maszyny</h3>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
+<button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
+<button class="export-btn" id="btnExportCsv" onclick="exportCsv()">💾 CSV</button>
+</div>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<span class="mini-label">Format</span>
+<select id="gcodeFormat">
+<option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
+<option value="fanuc">G81 (Fanuc / Haas)</option>
+<option value="plain">Tylko lista X Y</option>
+</select>
+</div>
+<div class="input-row" style="gap: 8px;">
+<span class="mini-label">Z</span>
+<input type="number" id="gzDepth" value="-10" step="0.5">
+<span class="mini-label">F</span>
+<input type="number" id="gFeed" value="100" step="10">
+<span class="mini-label">S</span>
+<input type="number" id="gSpeed" value="1200" step="100">
+</div>
+<p class="hint">Z — głębokość wiercenia (mm), F — posuw (mm/min), S — obroty. Program to punkt startowy — przed obróbką sprawdź go na maszynie.</p>
+</div>
+</section>
+<section id="sectionWyniki" class="app-section">
 <div class="panel canvas-container" style="display: block;">
 <canvas id="pcdCanvas" width="320" height="320"></canvas>
 <div id="collisionWarning"></div>
@@ -301,59 +372,13 @@ body { background: #ffffff !important; color: #000000 !important; }
 </table>
 </div>
 <div class="panel">
-<h3 class="sub">📤 Eksport do maszyny</h3>
-<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
-<button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
-<button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
-<button class="export-btn" id="btnExportCsv" onclick="exportCsv()">💾 CSV</button>
+<h3 class="sub">📄 Karta wyniku</h3>
+<div class="input-row" style="gap: 8px;">
 <button class="export-btn" id="btnPrint" onclick="printResult()">🖨️ Drukuj / PDF</button>
-</div>
-<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <button class="export-btn" id="btnShare" onclick="shareResult()">📤 Udostępnij</button>
 </div>
-<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
-<span class="mini-label">Format</span>
-<select id="gcodeFormat">
-<option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
-<option value="fanuc">G81 (Fanuc / Haas)</option>
-<option value="plain">Tylko lista X Y</option>
-</select>
 </div>
-<div class="input-row" style="gap: 8px;">
-<span class="mini-label">Z</span>
-<input type="number" id="gzDepth" value="-10" step="0.5">
-<span class="mini-label">F</span>
-<input type="number" id="gFeed" value="100" step="10">
-<span class="mini-label">S</span>
-<input type="number" id="gSpeed" value="1200" step="100">
-</div>
-<p class="hint">Z — głębokość wiercenia (mm), F — posuw (mm/min), S — obroty. Program to punkt startowy — przed obróbką sprawdź go na maszynie.</p>
-</div>
-<div class="panel">
-<h3 class="sub">💾 Zapisane ustawienia</h3>
-<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
-<input type="text" id="presetName" placeholder="np. Kołnierz 24 otwory">
-<button class="btn-small" onclick="savePreset()">Zapisz</button>
-<button class="btn-small" onclick="saveHistory()">Zapisz do historii</button>
-</div>
-<div id="presetList"></div>
-<h3 class="sub" style="margin-top: 20px;">🕘 Ostatnie detale</h3>
-<div id="historyList"></div>
-</div>
-<div class="panel">
-<h3 class="sub">🔧 Gwinty metryczne — środek pod gwint (wiertło)</h3>
-<table id="threadTable">
-<thead>
-<tr>
-<th>Gwint</th>
-<th>Skok (mm)</th>
-<th>Otwór (mm)</th>
-</tr>
-</thead>
-<tbody></tbody>
-</table>
-<p class="hint">Wartości dla gwintów zwykłych (głównych). Cykl gwintowania: G84 (Fanuc) / CYCLE84 (Sinumerik).</p>
-</div>
+</section>
 </div>
 <script>
 const canvas = document.getElementById('pcdCanvas');
@@ -774,6 +799,18 @@ if (d < bestDist) { bestDist = d; best = i; }
 });
 if (best !== -1 && bestDist <= 18) selectHole(best, false);
 }
+const SECTION_KEY = 'pcdSection';
+function setSection(name) {
+if (!['Dane', 'Presety', 'Gkod', 'Wyniki'].includes(name)) name = 'Dane';
+document.querySelectorAll('.app-section').forEach(s => s.classList.remove('active'));
+document.getElementById('section' + name).classList.add('active');
+document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+const nb = document.getElementById('nav' + name);
+if (nb) nb.classList.add('active');
+try { localStorage.setItem(SECTION_KEY, name); } catch (e) {}
+if (name === 'Wyniki') updateCalculations();
+}
+setSection((function() { try { const s = localStorage.getItem(SECTION_KEY); return ['Dane','Presety','Gkod','Wyniki'].includes(s) ? s : 'Dane'; } catch (e) { return 'Dane'; } })());
 const THEME_KEY = 'pcdTheme';
 function canvasTheme() {
 return document.body.classList.contains('light-theme') ? { bg: '#ffffff', text: '#1c1c1e' } : { bg: '#1c1c1e', text: '#ffffff' };
