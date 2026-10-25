@@ -262,6 +262,47 @@ let manualHoles = [
 { angle: 52.5, reference: 2 }
 ];
 let lastExport = { points: [], meta: null };
+const STATE_KEY = 'pcdAppState';
+function saveState() {
+try {
+localStorage.setItem(STATE_KEY, JSON.stringify({
+currentMode: currentMode,
+diameter: document.getElementById('diameter').value,
+holes: document.getElementById('holes').value,
+startAngle: document.getElementById('startAngle').value,
+offsetX: document.getElementById('offsetX').value,
+offsetY: document.getElementById('offsetY').value,
+thread: document.getElementById('threadSelect').value,
+gcodeFormat: document.getElementById('gcodeFormat').value,
+gzDepth: document.getElementById('gzDepth').value,
+gFeed: document.getElementById('gFeed').value,
+gSpeed: document.getElementById('gSpeed').value,
+manual: manualHoles
+}));
+} catch (e) {}
+}
+function restoreState() {
+let s = null;
+try { s = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (e) { s = null; }
+if (!s) return;
+if (s.diameter) { document.getElementById('diameter').value = s.diameter; document.getElementById('diameterSlider').value = s.diameter; }
+if (s.holes) { document.getElementById('holes').value = s.holes; document.getElementById('holesSlider').value = s.holes; }
+if (s.startAngle) { document.getElementById('startAngle').value = s.startAngle; document.getElementById('startAngleSlider').value = s.startAngle; }
+if (s.offsetX) document.getElementById('offsetX').value = s.offsetX;
+if (s.offsetY) document.getElementById('offsetY').value = s.offsetY;
+if (s.thread) document.getElementById('threadSelect').value = s.thread;
+if (s.gcodeFormat) document.getElementById('gcodeFormat').value = s.gcodeFormat;
+if (s.gzDepth) document.getElementById('gzDepth').value = s.gzDepth;
+if (s.gFeed) document.getElementById('gFeed').value = s.gFeed;
+if (s.gSpeed) document.getElementById('gSpeed').value = s.gSpeed;
+if (s.manual && s.manual.length) manualHoles = JSON.parse(JSON.stringify(s.manual));
+const btns = document.querySelectorAll('.tab-btn');
+if (s.currentMode) {
+btns.forEach(b => b.classList.remove('active'));
+btns[s.currentMode === 'manual' ? 1 : 0].classList.add('active');
+}
+applyMode(s.currentMode || 'regular');
+}
 function setMode(mode) {
 document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 event.target.classList.add('active');
@@ -428,6 +469,7 @@ row.insertCell(4).innerText = chordText;
 }
 });
 drawCanvas(points, diameter, !!thread);
+saveState();
 }
 function calculatePoint(radius, angleDeg) {
 const angleRad = angleDeg * (Math.PI / 180);
@@ -621,6 +663,10 @@ startAngle: document.getElementById('startAngle').value,
 offsetX: document.getElementById('offsetX').value,
 offsetY: document.getElementById('offsetY').value,
 thread: document.getElementById('threadSelect').value,
+gcodeFormat: document.getElementById('gcodeFormat').value,
+gzDepth: document.getElementById('gzDepth').value,
+gFeed: document.getElementById('gFeed').value,
+gSpeed: document.getElementById('gSpeed').value,
 manual: JSON.parse(JSON.stringify(manualHoles))
 });
 localStorage.setItem('pcdPresets', JSON.stringify(presets));
@@ -645,6 +691,10 @@ document.getElementById('startAngleSlider').value = p.startAngle;
 document.getElementById('offsetX').value = p.offsetX;
 document.getElementById('offsetY').value = p.offsetY;
 document.getElementById('threadSelect').value = p.thread;
+if (p.gcodeFormat) document.getElementById('gcodeFormat').value = p.gcodeFormat;
+if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
+if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
+if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
 const btns = document.querySelectorAll('.tab-btn');
 btns.forEach(b => b.classList.remove('active'));
@@ -665,8 +715,17 @@ document.getElementById('offsetX').addEventListener('input', updateCalculations)
 document.getElementById('offsetY').addEventListener('input', updateCalculations);
 renderThreadTable();
 renderPresets();
+restoreState();
+if (document.getElementById('gcodeFormat')) {
+document.getElementById('gcodeFormat').addEventListener('change', saveState);
+document.getElementById('gzDepth').addEventListener('change', saveState);
+document.getElementById('gFeed').addEventListener('change', saveState);
+document.getElementById('gSpeed').addEventListener('change', saveState);
+}
+if (!localStorage.getItem(STATE_KEY)) {
 renderManualList();
 updateCalculations();
+}
 document.getElementById('diameter').addEventListener('input', updateCalculations);
 document.getElementById('diameterSlider').addEventListener('input', updateCalculations);
 if ('serviceWorker' in navigator) {
