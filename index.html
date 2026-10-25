@@ -1309,8 +1309,8 @@ const fill = (line, v) => line
 .replace(/\{kat_podz\}/g, v.step.toFixed(3))
 .replace(/\{n\}/g, String(v.n))
 .replace(/\{posuw\}/g, f.toFixed(0));
-out.push(m.meta.groups ? (';(PCD GRUPY / ' + m.points.length + ' OTW.)') : (';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)'));
-if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
+out.push(m.meta.groups ? ('%(PCD GRUPY / ' + m.points.length + ' OTW.)') : ('%(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)'));
+if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
 out.push('N10 G17 G90 G40 G54 D' + dcorr);
 out.push('N20 S' + s + ' M3');
 out.push('N30 G0 Z' + clr.toFixed(1));
