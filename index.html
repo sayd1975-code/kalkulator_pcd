@@ -74,10 +74,34 @@ td:first-child { color: #8e8e93; }
 tr.hl-row { background: rgba(10, 132, 255, 0.25); }
 tr.hl-row td { border-bottom-color: rgba(10, 132, 255, 0.5); }
 canvas { touch-action: manipulation; }
+@media print {
+body { background: #ffffff !important; color: #000000 !important; }
+.container > *:not(#printView) { display: none !important; }
+.container { max-width: none; padding: 0; }
+#printView { display: block !important; }
+#printView, #printView * { color: #000000 !important; background: #ffffff !important; }
+#printView h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px 0; }
+#printView .pv-meta { font-size: 13px; margin: 0 0 14px 0; }
+#printView .pv-flex { display: flex; gap: 24px; align-items: flex-start; }
+#printView .pv-flex > div { flex: 1; }
+#printView table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#printView th, #printView td { border: 1px solid #000000; padding: 4px 8px; text-align: right; }
+#printView th:first-child, #printView td:first-child { text-align: left; }
+#printView .pv-foot { margin-top: 14px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
 <div class="container">
+<div id="printView">
+<h1>Kalkulator PCD — karta detalu</h1>
+<div class="pv-meta" id="printMeta"></div>
+<div class="pv-flex">
+<div><canvas id="printCanvas" width="420" height="480"></canvas></div>
+<div><table id="printTable"><thead><tr><th>Otwór</th><th>Kąt (°)</th><th>X (mm)</th><th>Y (mm)</th></tr></thead><tbody></tbody></table></div>
+</div>
+<p class="pv-foot">Wygenerowano w Kalkulatorze PCD — współrzędne liczone od środka okręgu X0/Y0.</p>
+</div>
 <div class="header">
 <h1>Kalkulator PCD<br>(Średnica Podziałowa)</h1>
 <h2>Wyznaczanie współrzędnych otworów CNC</h2>
@@ -197,6 +221,7 @@ canvas { touch-action: manipulation; }
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
 <button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
+<button class="export-btn" id="btnPrint" onclick="printResult()">🖨️ Drukuj / PDF</button>
 </div>
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <span class="mini-label">Format</span>
@@ -602,6 +627,72 @@ ctx.textAlign = 'center';
 ctx.textBaseline = 'middle';
 ctx.fillText(index + 1, textX, textY);
 });
+}
+function printResult() {
+const m = lastExport;
+if (!m.points.length) return;
+const pcv = document.getElementById('printCanvas');
+const pctx = pcv.getContext('2d');
+const W = pcv.width, H = pcv.height;
+const cx = W / 2, cy = H / 2 - 10;
+const drawingRadius = Math.min(W, H) / 2 - 55;
+const scale = drawingRadius / (m.meta.diameter / 2 || 1);
+pctx.fillStyle = '#ffffff';
+pctx.fillRect(0, 0, W, H);
+pctx.strokeStyle = '#000000';
+pctx.lineWidth = 1;
+pctx.setLineDash([4, 4]);
+pctx.beginPath();
+pctx.arc(cx, cy, drawingRadius, 0, 2 * Math.PI);
+pctx.stroke();
+pctx.setLineDash([]);
+m.points.forEach(p => {
+const aRad = p.angle * Math.PI / 180;
+const hx = cx + (m.meta.diameter / 2 * Math.cos(aRad)) * scale;
+const hy = cy - (m.meta.diameter / 2 * Math.sin(aRad)) * scale;
+pctx.beginPath();
+pctx.arc(hx, hy, 3.5, 0, 2 * Math.PI);
+pctx.stroke();
+});
+pctx.font = '11px -apple-system, sans-serif';
+pctx.fillStyle = '#000000';
+pctx.textAlign = 'center';
+pctx.textBaseline = 'middle';
+m.points.forEach((p, i) => {
+const aRad = p.angle * Math.PI / 180;
+const tx = cx + (drawingRadius + 14) * Math.cos(aRad);
+const ty = cy - (drawingRadius + 14) * Math.sin(aRad);
+pctx.fillText(i + 1, tx, ty);
+});
+const dimAngle = 135 * Math.PI / 180;
+pctx.beginPath();
+pctx.moveTo(cx, cy);
+pctx.lineTo(cx + drawingRadius * Math.cos(dimAngle), cy - drawingRadius * Math.sin(dimAngle));
+pctx.stroke();
+pctx.textAlign = 'left';
+pctx.fillText('R ' + (m.meta.diameter / 2).toFixed(2), cx - 10, cy - drawingRadius * 0.5 - 8);
+const dimY = cy + drawingRadius + 14;
+pctx.beginPath();
+pctx.moveTo(cx - drawingRadius, dimY);
+pctx.lineTo(cx + drawingRadius, dimY);
+pctx.stroke();
+pctx.textAlign = 'center';
+pctx.fillText('\u2305 ' + m.meta.diameter.toFixed(2) + ' (D)', cx, dimY + 8);
+document.getElementById('printMeta').innerText =
+'\u015arednica D: ' + m.meta.diameter.toFixed(3) + ' mm \u00b7 R: ' + (m.meta.diameter / 2).toFixed(3) + ' mm \u00b7 otwor\u00f3w: ' + m.points.length +
+' \u00b7 \u015brodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3) +
+(m.meta.thread ? ' \u00b7 gwint: ' + m.meta.thread + ' (otw\u00f3r ' + THREADS[m.meta.thread].drill.toFixed(3) + ' mm)' : '');
+const tb = document.getElementById('printTable').getElementsByTagName('tbody')[0];
+tb.innerHTML = '';
+m.points.forEach((p, i) => {
+const row = tb.insertRow();
+let a = p.angle % 360; if (a < 0) a += 360;
+row.insertCell(0).innerText = '#' + (i + 1);
+row.insertCell(1).innerText = a.toFixed(1) + '\u00b0';
+row.insertCell(2).innerText = p.x.toFixed(3);
+row.insertCell(3).innerText = p.y.toFixed(3);
+});
+window.print();
 }
 function copyText(txt, btnId) {
 const btn = document.getElementById(btnId);
