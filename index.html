@@ -74,6 +74,7 @@ td:first-child { color: #8e8e93; }
 tr.hl-row { background: rgba(10, 132, 255, 0.25); }
 tr.hl-row td { border-bottom-color: rgba(10, 132, 255, 0.5); }
 canvas { touch-action: manipulation; }
+#printView { display: none; }
 @media print {
 body { background: #ffffff !important; color: #000000 !important; }
 .container > *:not(#printView) { display: none !important; }
@@ -683,7 +684,7 @@ pctx.moveTo(cx - drawingRadius, dimY);
 pctx.lineTo(cx + drawingRadius, dimY);
 pctx.stroke();
 pctx.textAlign = 'center';
-pctx.fillText('\u2305 ' + m.meta.diameter.toFixed(2) + ' (D)', cx, dimY + 8);
+pctx.fillText('\u2205 ' + m.meta.diameter.toFixed(2) + ' (D)', cx, dimY + 8);
 document.getElementById('printMeta').innerText =
 '\u015arednica D: ' + m.meta.diameter.toFixed(3) + ' mm \u00b7 R: ' + (m.meta.diameter / 2).toFixed(3) + ' mm \u00b7 otwor\u00f3w: ' + m.points.length +
 ' \u00b7 \u015brodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3) +
