@@ -79,6 +79,9 @@ canvas { touch-action: manipulation; }
 .group-label { font-size: 14px; color: #e5e5ea; font-weight: bold; flex-grow: 1; }
 .group-color { width: 12px; height: 12px; border-radius: 50%; display: inline-block; margin-right: 8px; vertical-align: middle; }
 .group-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 10px; align-items: center; }
+#collisionWarning { display: none; margin: 0; padding: 12px; border-radius: 8px; background: rgba(255, 59, 48, 0.15); border: 1px solid #ff3b30; color: #ff3b30; font-size: 13px; line-height: 1.5; }
+#collisionWarning ul { margin: 6px 0 0 0; padding-left: 18px; }
+tr.collision-row td { color: #ff3b30 !important; border-bottom-color: rgba(255, 59, 48, 0.5) !important; }
 #printView { display: none; }
 @media print {
 body { background: #ffffff !important; color: #000000 !important; }
@@ -216,8 +219,9 @@ body { background: #ffffff !important; color: #000000 !important; }
 </div>
 </div>
 </div>
-<div class="panel canvas-container">
+<div class="panel canvas-container" style="display: block;">
 <canvas id="pcdCanvas" width="320" height="320"></canvas>
+<div id="collisionWarning"></div>
 </div>
 <div class="table-header">
 <h3 class="table-title">Współrzędne<br>otworów (X / Y)</h3>
@@ -613,8 +617,46 @@ row.insertCell(4).innerText = (p.holeDia || 0).toFixed(1);
 }
 });
 document.getElementById('holeDiaHeader').style.display = (currentMode === 'groups') ? '' : 'none';
+const collisions = (currentMode === 'groups') ? detectCollisions(points) : [];
+const collisionIdx = new Set();
+collisions.forEach(c => { collisionIdx.add(c.a); collisionIdx.add(c.b); });
+absPoints.forEach((p, index) => {
+if (collisionIdx.has(index)) resultsTable.rows[index].classList.add('collision-row');
+});
+const warnBox = document.getElementById('collisionWarning');
+if (collisions.length) {
+warnBox.style.display = 'block';
+warnBox.innerHTML = '<strong>\u26a0\ufe0f Kolizje otwor\u00f3w (' + collisions.length + '):</strong><ul>' +
+collisions.map(c => '<li>' + c.msg + '</li>').join('') + '</ul>';
+} else {
+warnBox.style.display = 'none';
+warnBox.innerHTML = '';
+}
 drawCanvas(points, diameter, !!thread);
 saveState();
+}
+function detectCollisions(points) {
+const partDia = parseFloat(document.getElementById('partDiameter').value) || 0;
+const partRadius = partDia / 2;
+const holes = points.map((p, i) => ({ i, x: p.x, y: p.y, r: (p.holeDia || 0) / 2, label: p.label || ('#' + (i + 1)) }));
+const found = [];
+for (let i = 0; i < holes.length; i++) {
+for (let j = i + 1; j < holes.length; j++) {
+const d = Math.hypot(holes[i].x - holes[j].x, holes[i].y - holes[j].y);
+if (holes[i].r + holes[j].r > d) {
+found.push({ a: i, b: j, msg: holes[i].label + ' + ' + holes[j].label + ': nachodz\u0105 na siebie (suma promieni ' + (holes[i].r + holes[j].r).toFixed(2) + ' mm > odleg\u0142o\u015b\u0107 \u015brodk\u00f3w ' + d.toFixed(2) + ' mm)' });
+}
+}
+}
+if (partRadius > 0) {
+holes.forEach(h => {
+const dist = Math.hypot(h.x, h.y);
+if (dist + h.r > partRadius) {
+found.push({ a: h.i, b: h.i, msg: h.label + ': wychodzi poza materia\u0142 (odleg\u0142o\u015b\u0107 \u015brodka ' + dist.toFixed(2) + ' mm + promie\u0144 otworu ' + h.r.toFixed(2) + ' mm > promie\u0144 detalu ' + partRadius.toFixed(2) + ' mm)' });
+}
+});
+}
+return found;
 }
 function calculatePoint(radius, angleDeg) {
 const angleRad = angleDeg * (Math.PI / 180);
@@ -752,7 +794,13 @@ ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : '#1c1c1e';
 ctx.fill();
 ctx.lineWidth = 2;
 const gColor = (p.group >= 0) ? GROUP_COLORS[p.group % GROUP_COLORS.length] : '#64d2ff';
+const collisionSet = (typeof collisionIdx !== 'undefined' && collisionIdx) ? collisionIdx : null;
+if (collisionSet && collisionSet.has(index)) {
+ctx.strokeStyle = '#ff3b30';
+ctx.lineWidth = 3;
+} else {
 ctx.strokeStyle = (index === selectedHole) ? '#ffffff' : gColor;
+}
 ctx.stroke();
 const textOffset = 16;
 const textX = center + ((pR * scale) + textOffset) * Math.cos(pRad);
