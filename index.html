@@ -283,6 +283,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
 <button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
+<button class="export-btn" id="btnExportCsv" onclick="exportCsv()">💾 CSV</button>
 <button class="export-btn" id="btnPrint" onclick="printResult()">🖨️ Drukuj / PDF</button>
 </div>
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
@@ -1021,6 +1022,28 @@ m.points.forEach((p, i) => {
 lines.push('#' + (i + 1) + '  X ' + p.x.toFixed(3) + '  Y ' + p.y.toFixed(3));
 });
 copyText(lines.join('\n'), 'btnCopyCoords');
+}
+function exportCsv() {
+const m = lastExport;
+if (!m.points.length) return;
+const th = m.meta.thread;
+const drill = th ? THREADS[th].drill : 0;
+const rows = ['Nr;Kąt;X;Y;∅'];
+m.points.forEach((p, i) => {
+let a = p.angle % 360; if (a < 0) a += 360;
+const dia = p.holeDia || drill;
+rows.push((i + 1) + ';' + a.toFixed(1) + ';' + p.x.toFixed(3) + ';' + p.y.toFixed(3) + ';' + (dia ? dia.toFixed(3) : ''));
+});
+const csv = rows.join('\n');
+const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = 'pcd_otwory.csv';
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
 }
 function copyGcode() {
 const m = lastExport;
