@@ -163,7 +163,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 </div>
 <nav class="section-nav">
 <button class="nav-btn active" id="navDane" onclick="setSection('Dane')"><span class="nav-icon">📐</span>Dane</button>
-<button class="nav-btn" id="navPresety" onclick="setSection('Presety')"><span class="nav-icon">💾</span>Presety</button>
+<button class="nav-btn" id="navPresety" onclick="setSection('Presety')"><span class="nav-icon">💾</span>Zapisane</button>
 <button class="nav-btn" id="navGkod" onclick="setSection('Gkod')"><span class="nav-icon">⚙️</span>G-kod</button>
 <button class="nav-btn" id="navWyniki" onclick="setSection('Wyniki')"><span class="nav-icon">📊</span>Wyniki</button>
 </nav>
@@ -229,7 +229,6 @@ body { background: #ffffff !important; color: #000000 !important; }
 <div class="input-group">
 <button class="collapse-btn" id="btnTplToggle" onclick="toggleCollapse('tpl', 'pcdTemplatesOpen')">📏 Rozstawy typowe <span id="tplArrow">▶</span></button>
 <div class="collapse-body" id="tplBody">
-<label>Rozstawy typowe — szablony</label>
 <div class="tpl-grid">
 <button class="tpl-btn" onclick="applyTemplate(4, 65, 'DN15')">DN15 · 4× · PCD 65</button>
 <button class="tpl-btn" onclick="applyTemplate(4, 75, 'DN20')">DN20 · 4× · PCD 75</button>
@@ -286,7 +285,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <button class="add-btn" onclick="addGroup()">+ Dodaj grupę</button>
 </div>
 <div class="results-cards">
-<div class="card">
+<div class="card" id="radiusCard">
 <span class="card-label">Promień R</span>
 <span class="card-value" id="resRadius">150.000</span>
 <span class="card-unit">mm</span>
@@ -694,6 +693,7 @@ document.getElementById('threadUnit').innerText = 'mm · skok ' + thread.pitch;
 threadCard.style.display = 'none';
 }
 document.getElementById('resRadius').innerText = radius.toFixed(3);
+document.getElementById('radiusCard').style.display = (currentMode === 'groups') ? 'none' : 'block';
 resultsTable.innerHTML = '';
 const points = [];
 if (currentMode === 'regular') {
@@ -929,8 +929,9 @@ ctx.strokeStyle = '#2c2c2e';
 ctx.lineWidth = 1;
 points.forEach(p => {
 const pRad = p.angle * (Math.PI / 180);
-const endX = center + ((diameter/2) * Math.cos(pRad)) * scale;
-const endY = center - ((diameter/2) * Math.sin(pRad)) * scale;
+const pR = (currentMode === 'groups') ? ((p.group >= 0 && lastExport.meta && lastExport.meta.groups) ? (lastExport.meta.groups[p.group].pcd / 2) : 0) : (diameter / 2);
+const endX = center + (pR * Math.cos(pRad)) * scale;
+const endY = center - (pR * Math.sin(pRad)) * scale;
 ctx.beginPath();
 ctx.moveTo(center, center);
 ctx.lineTo(endX, endY);
@@ -1079,9 +1080,15 @@ pctx.textAlign = 'center';
 pctx.textBaseline = 'middle';
 m.points.forEach((p, i) => {
 const aRad = p.angle * Math.PI / 180;
+if (m.meta.groups) {
+const hx = cx + (p.x - m.meta.offX) * scale;
+const hy = cy - (p.y - m.meta.offY) * scale;
+pctx.fillText(i + 1, hx + 11 * Math.cos(aRad), hy - 11 * Math.sin(aRad));
+} else {
 const tx = cx + (drawingRadius + 14) * Math.cos(aRad);
 const ty = cy - (drawingRadius + 14) * Math.sin(aRad);
 pctx.fillText(i + 1, tx, ty);
+}
 });
 const dimAngle = 135 * Math.PI / 180;
 pctx.beginPath();
@@ -1186,7 +1193,8 @@ const rows = ['Nr;Kąt;X;Y;∅'];
 m.points.forEach((p, i) => {
 let a = p.angle % 360; if (a < 0) a += 360;
 const dia = p.holeDia || drill;
-rows.push((i + 1) + ';' + a.toFixed(1) + ';' + p.x.toFixed(3) + ';' + p.y.toFixed(3) + ';' + (dia ? dia.toFixed(3) : ''));
+const dec = (v) => String(v).replace('.', ',');
+rows.push((i + 1) + ';' + dec(a.toFixed(1)) + ';' + dec(p.x.toFixed(3)) + ';' + dec(p.y.toFixed(3)) + ';' + (dia ? dec(dia.toFixed(3)) : ''));
 });
 const csv = rows.join('\n');
 const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
@@ -1234,7 +1242,7 @@ out.push('O0001 (PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length +
 if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
 out.push('N10 G17 G90 G54');
 out.push('N20 M3 S' + s);
-out.push('N30 G0 Z50.');
+out.push('N30 G0 Z' + (Math.abs(parseFloat(document.getElementById('gClearZ').value) || 20)).toFixed(1));
 out.push(pec ? ('N40 G99 G83 Z' + z.toFixed(3) + ' Q' + q.toFixed(3) + ' R2. F' + f.toFixed(0) + '.') : ('N40 G99 G81 Z' + z.toFixed(3) + ' R2. F' + f.toFixed(0) + '.'));
 let n = 50;
 m.points.forEach(p => {
@@ -1301,7 +1309,7 @@ const fill = (line, v) => line
 .replace(/\{kat_podz\}/g, v.step.toFixed(3))
 .replace(/\{n\}/g, String(v.n))
 .replace(/\{posuw\}/g, f.toFixed(0));
-out.push(';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+out.push(m.meta.groups ? (';(PCD GRUPY / ' + m.points.length + ' OTW.)') : (';(PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)'));
 if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
 out.push('N10 G17 G90 G54 D' + dcorr);
 out.push('N20 S' + s + ' M3');
@@ -1333,7 +1341,7 @@ out.push('N' + n + ' L900'); n += 10;
 out.push('N' + n + ' G0 Z' + clr.toFixed(1) + ' M5'); n += 10;
 out.push('N' + n + ' M30');
 } else {
-out.push('PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.');
+out.push(m.meta.groups ? ('PCD GRUPY / ' + m.points.length + ' OTW.') : ('PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.'));
 if (t) out.push('GWINT ' + th + ' OTWOR D' + t.drill.toFixed(3));
 m.points.forEach((p, i) => {
 out.push('X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
@@ -1565,6 +1573,12 @@ document.getElementById('gPeckStep').addEventListener('change', saveState);
 document.getElementById('gClearZ').addEventListener('change', saveState);
 document.getElementById('l900D').addEventListener('change', saveState);
 document.getElementById('l900Tpl').addEventListener('change', saveState);
+['l900D', 'l900Tpl'].forEach(id => {
+document.getElementById(id).addEventListener('input', function() {
+const gta = document.getElementById('gcodePreview');
+if (gta && gta.value) gta.value = buildGcode();
+});
+});
 }
 if (!localStorage.getItem(STATE_KEY)) {
 renderManualList();
