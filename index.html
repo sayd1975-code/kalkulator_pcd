@@ -74,10 +74,35 @@ td:first-child { color: #8e8e93; }
 tr.hl-row { background: rgba(10, 132, 255, 0.25); }
 tr.hl-row td { border-bottom-color: rgba(10, 132, 255, 0.5); }
 canvas { touch-action: manipulation; }
+#printView { display: none; }
+@media print {
+body { background: #ffffff !important; color: #000000 !important; }
+.container > *:not(#printView) { display: none !important; }
+.container { max-width: none; padding: 0; }
+#printView { display: block !important; }
+#printView, #printView * { color: #000000 !important; background: #ffffff !important; }
+#printView h1 { font-size: 20px; font-weight: 600; margin: 0 0 6px 0; }
+#printView .pv-meta { font-size: 13px; margin: 0 0 14px 0; }
+#printView .pv-flex { display: flex; gap: 24px; align-items: flex-start; }
+#printView .pv-flex > div { flex: 1; }
+#printView table { width: 100%; border-collapse: collapse; font-size: 12px; }
+#printView th, #printView td { border: 1px solid #000000; padding: 4px 8px; text-align: right; }
+#printView th:first-child, #printView td:first-child { text-align: left; }
+#printView .pv-foot { margin-top: 14px; font-size: 11px; }
+}
 </style>
 </head>
 <body>
 <div class="container">
+<div id="printView">
+<h1>Kalkulator PCD — karta detalu</h1>
+<div class="pv-meta" id="printMeta"></div>
+<div class="pv-flex">
+<div><canvas id="printCanvas" width="420" height="480"></canvas></div>
+<div><table id="printTable"><thead><tr><th>Otwór</th><th>Kąt (°)</th><th>X (mm)</th><th>Y (mm)</th></tr></thead><tbody></tbody></table></div>
+</div>
+<p class="pv-foot">Wygenerowano w Kalkulatorze PCD — współrzędne liczone od środka okręgu X0/Y0.</p>
+</div>
 <div class="header">
 <h1>Kalkulator PCD<br>(Średnica Podziałowa)</h1>
 <h2>Wyznaczanie współrzędnych otworów CNC</h2>
@@ -197,6 +222,10 @@ canvas { touch-action: manipulation; }
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <button class="export-btn" id="btnCopyCoords" onclick="copyCoords()">📋 Współrzędne</button>
 <button class="export-btn" id="btnCopyGcode" onclick="copyGcode()">🧾 G-kod</button>
+<button class="export-btn" id="btnPrint" onclick="printResult()">🖨️ Drukuj / PDF</button>
+</div>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<button class="export-btn" id="btnShare" onclick="shareResult()">📤 Udostępnij</button>
 </div>
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <span class="mini-label">Format</span>
@@ -221,8 +250,11 @@ canvas { touch-action: manipulation; }
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <input type="text" id="presetName" placeholder="np. Kołnierz 24 otwory">
 <button class="btn-small" onclick="savePreset()">Zapisz</button>
+<button class="btn-small" onclick="saveHistory()">Zapisz do historii</button>
 </div>
 <div id="presetList"></div>
+<h3 class="sub" style="margin-top: 20px;">🕘 Ostatnie detale</h3>
+<div id="historyList"></div>
 </div>
 <div class="panel">
 <h3 class="sub">🔧 Gwinty metryczne — środek pod gwint (wiertło)</h3>
@@ -603,6 +635,97 @@ ctx.textBaseline = 'middle';
 ctx.fillText(index + 1, textX, textY);
 });
 }
+function printResult() {
+const m = lastExport;
+if (!m.points.length) return;
+const pcv = document.getElementById('printCanvas');
+const pctx = pcv.getContext('2d');
+const W = pcv.width, H = pcv.height;
+const cx = W / 2, cy = H / 2 - 10;
+const drawingRadius = Math.min(W, H) / 2 - 55;
+const scale = drawingRadius / (m.meta.diameter / 2 || 1);
+pctx.fillStyle = '#ffffff';
+pctx.fillRect(0, 0, W, H);
+pctx.strokeStyle = '#000000';
+pctx.lineWidth = 1;
+pctx.setLineDash([4, 4]);
+pctx.beginPath();
+pctx.arc(cx, cy, drawingRadius, 0, 2 * Math.PI);
+pctx.stroke();
+pctx.setLineDash([]);
+m.points.forEach(p => {
+const aRad = p.angle * Math.PI / 180;
+const hx = cx + (m.meta.diameter / 2 * Math.cos(aRad)) * scale;
+const hy = cy - (m.meta.diameter / 2 * Math.sin(aRad)) * scale;
+pctx.beginPath();
+pctx.arc(hx, hy, 3.5, 0, 2 * Math.PI);
+pctx.stroke();
+});
+pctx.font = '11px -apple-system, sans-serif';
+pctx.fillStyle = '#000000';
+pctx.textAlign = 'center';
+pctx.textBaseline = 'middle';
+m.points.forEach((p, i) => {
+const aRad = p.angle * Math.PI / 180;
+const tx = cx + (drawingRadius + 14) * Math.cos(aRad);
+const ty = cy - (drawingRadius + 14) * Math.sin(aRad);
+pctx.fillText(i + 1, tx, ty);
+});
+const dimAngle = 135 * Math.PI / 180;
+pctx.beginPath();
+pctx.moveTo(cx, cy);
+pctx.lineTo(cx + drawingRadius * Math.cos(dimAngle), cy - drawingRadius * Math.sin(dimAngle));
+pctx.stroke();
+pctx.textAlign = 'left';
+pctx.fillText('R ' + (m.meta.diameter / 2).toFixed(2), cx - 10, cy - drawingRadius * 0.5 - 8);
+const dimY = cy + drawingRadius + 14;
+pctx.beginPath();
+pctx.moveTo(cx - drawingRadius, dimY);
+pctx.lineTo(cx + drawingRadius, dimY);
+pctx.stroke();
+pctx.textAlign = 'center';
+pctx.fillText('\u2205 ' + m.meta.diameter.toFixed(2) + ' (D)', cx, dimY + 8);
+document.getElementById('printMeta').innerText =
+'\u015arednica D: ' + m.meta.diameter.toFixed(3) + ' mm \u00b7 R: ' + (m.meta.diameter / 2).toFixed(3) + ' mm \u00b7 otwor\u00f3w: ' + m.points.length +
+' \u00b7 \u015brodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3) +
+(m.meta.thread ? ' \u00b7 gwint: ' + m.meta.thread + ' (otw\u00f3r ' + THREADS[m.meta.thread].drill.toFixed(3) + ' mm)' : '');
+const tb = document.getElementById('printTable').getElementsByTagName('tbody')[0];
+tb.innerHTML = '';
+m.points.forEach((p, i) => {
+const row = tb.insertRow();
+let a = p.angle % 360; if (a < 0) a += 360;
+row.insertCell(0).innerText = '#' + (i + 1);
+row.insertCell(1).innerText = a.toFixed(1) + '\u00b0';
+row.insertCell(2).innerText = p.x.toFixed(3);
+row.insertCell(3).innerText = p.y.toFixed(3);
+});
+window.print();
+}
+function shareResult() {
+const m = lastExport;
+if (!m.points.length) return;
+const lines = [];
+lines.push('KALKULATOR PCD');
+lines.push('\u015arednica D: ' + m.meta.diameter.toFixed(3) + ' mm (R ' + (m.meta.diameter / 2).toFixed(3) + ' mm)');
+lines.push('Liczba otwor\u00f3w: ' + m.points.length);
+lines.push('\u015arodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3));
+if (m.meta.thread) lines.push('Gwint: ' + m.meta.thread);
+m.points.forEach((p, i) => {
+lines.push('#' + (i + 1) + '  X ' + p.x.toFixed(3) + '  Y ' + p.y.toFixed(3));
+});
+const text = lines.join('\n');
+const btn = document.getElementById('btnShare');
+const showDone = function(msg) {
+const old = btn.innerText;
+btn.innerText = msg;
+setTimeout(function() { btn.innerText = old; }, 2000);
+};
+if (navigator.share) {
+navigator.share({ title: 'Kalkulator PCD \u2014 wsp\u00f3\u0142rz\u0119dne', text: text }).catch(function() {});
+} else {
+copyText(text, 'btnShare');
+}
+}
 function copyText(txt, btnId) {
 const btn = document.getElementById(btnId);
 const done = function() {
@@ -692,6 +815,93 @@ out.push('X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
 });
 }
 copyText(out.join('\n'), 'btnCopyGcode');
+}
+function getHistory() {
+try { return JSON.parse(localStorage.getItem('pcdHistory') || '[]'); }
+catch (e) { return []; }
+}
+function saveHistory() {
+const name = document.getElementById('presetName').value.trim() ||
+('D' + (parseFloat(document.getElementById('diameter').value) || 0).toFixed(0) + ' / ' +
+(currentMode === 'regular' ? (document.getElementById('holes').value + ' otw.') : (manualHoles.length + ' otw.')));
+const entry = {
+name: name,
+date: new Date().toISOString(),
+mode: currentMode,
+diameter: document.getElementById('diameter').value,
+holes: document.getElementById('holes').value,
+startAngle: document.getElementById('startAngle').value,
+offsetX: document.getElementById('offsetX').value,
+offsetY: document.getElementById('offsetY').value,
+thread: document.getElementById('threadSelect').value,
+gcodeFormat: document.getElementById('gcodeFormat').value,
+gzDepth: document.getElementById('gzDepth').value,
+gFeed: document.getElementById('gFeed').value,
+gSpeed: document.getElementById('gSpeed').value,
+manual: JSON.parse(JSON.stringify(manualHoles))
+};
+const h = getHistory();
+h.unshift(entry);
+if (h.length > 10) h.length = 10;
+localStorage.setItem('pcdHistory', JSON.stringify(h));
+document.getElementById('presetName').value = '';
+renderHistory();
+}
+function renderHistory() {
+const box = document.getElementById('historyList');
+box.innerHTML = '';
+const h = getHistory();
+if (!h.length) {
+box.innerHTML = '<p class="hint">Brak detali w historii — użyj „Zapisz do historii”, aby zapamiętać ostatnie obliczenia.</p>';
+return;
+}
+h.forEach((p, i) => {
+const item = document.createElement('div');
+item.className = 'preset-item';
+const name = document.createElement('button');
+name.className = 'preset-name';
+const d = new Date(p.date);
+name.innerHTML = p.name + '<br><span style="font-size: 11px; color: #8e8e93;">' +
+d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) +
+' · D' + (parseFloat(p.diameter) || 0).toFixed(0) + ' · ' +
+(p.mode === 'manual' ? (p.manual ? p.manual.length : 0) : parseInt(p.holes) || 0) + ' otw.</span>';
+name.onclick = function() { loadHistory(i); };
+const del = document.createElement('button');
+del.className = 'remove-btn';
+del.innerText = '\u2715';
+del.onclick = function() { deleteHistory(i); };
+item.appendChild(name);
+item.appendChild(del);
+box.appendChild(item);
+});
+}
+function loadHistory(i) {
+const p = getHistory()[i];
+if (!p) return;
+document.getElementById('diameter').value = p.diameter;
+document.getElementById('diameterSlider').value = p.diameter;
+document.getElementById('holes').value = p.holes;
+document.getElementById('holesSlider').value = p.holes;
+document.getElementById('startAngle').value = p.startAngle;
+document.getElementById('startAngleSlider').value = p.startAngle;
+document.getElementById('offsetX').value = p.offsetX;
+document.getElementById('offsetY').value = p.offsetY;
+document.getElementById('threadSelect').value = p.thread;
+if (p.gcodeFormat) document.getElementById('gcodeFormat').value = p.gcodeFormat;
+if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
+if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
+if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
+if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
+const btns = document.querySelectorAll('.tab-btn');
+btns.forEach(b => b.classList.remove('active'));
+btns[p.mode === 'manual' ? 1 : 0].classList.add('active');
+applyMode(p.mode);
+}
+function deleteHistory(i) {
+const h = getHistory();
+h.splice(i, 1);
+localStorage.setItem('pcdHistory', JSON.stringify(h));
+renderHistory();
 }
 function getPresets() {
 try { return JSON.parse(localStorage.getItem('pcdPresets') || '[]'); }
@@ -786,6 +996,7 @@ document.getElementById('offsetX').addEventListener('input', updateCalculations)
 document.getElementById('offsetY').addEventListener('input', updateCalculations);
 renderThreadTable();
 renderPresets();
+renderHistory();
 restoreState();
 if (document.getElementById('gcodeFormat')) {
 document.getElementById('gcodeFormat').addEventListener('change', saveState);
