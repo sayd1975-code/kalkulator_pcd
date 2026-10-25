@@ -224,6 +224,9 @@ body { background: #ffffff !important; color: #000000 !important; }
 <button class="export-btn" id="btnPrint" onclick="printResult()">🖨️ Drukuj / PDF</button>
 </div>
 <div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<button class="export-btn" id="btnShare" onclick="shareResult()">📤 Udostępnij</button>
+</div>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
 <span class="mini-label">Format</span>
 <select id="gcodeFormat">
 <option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
@@ -693,6 +696,31 @@ row.insertCell(2).innerText = p.x.toFixed(3);
 row.insertCell(3).innerText = p.y.toFixed(3);
 });
 window.print();
+}
+function shareResult() {
+const m = lastExport;
+if (!m.points.length) return;
+const lines = [];
+lines.push('KALKULATOR PCD');
+lines.push('\u015arednica D: ' + m.meta.diameter.toFixed(3) + ' mm (R ' + (m.meta.diameter / 2).toFixed(3) + ' mm)');
+lines.push('Liczba otwor\u00f3w: ' + m.points.length);
+lines.push('\u015arodek: X' + m.meta.offX.toFixed(3) + ' Y' + m.meta.offY.toFixed(3));
+if (m.meta.thread) lines.push('Gwint: ' + m.meta.thread);
+m.points.forEach((p, i) => {
+lines.push('#' + (i + 1) + '  X ' + p.x.toFixed(3) + '  Y ' + p.y.toFixed(3));
+});
+const text = lines.join('\n');
+const btn = document.getElementById('btnShare');
+const showDone = function(msg) {
+const old = btn.innerText;
+btn.innerText = msg;
+setTimeout(function() { btn.innerText = old; }, 2000);
+};
+if (navigator.share) {
+navigator.share({ title: 'Kalkulator PCD \u2014 wsp\u00f3\u0142rz\u0119dne', text: text }).catch(function() {});
+} else {
+copyText(text, 'btnShare');
+}
 }
 function copyText(txt, btnId) {
 const btn = document.getElementById(btnId);
