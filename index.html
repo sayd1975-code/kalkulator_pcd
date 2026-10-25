@@ -71,6 +71,9 @@ th, td { padding: 12px 5px; text-align: right; border-bottom: 1px solid #2c2c2e;
 th { color: #8e8e93; font-weight: 400; font-size: 13px; }
 th:first-child, td:first-child { text-align: left; padding-left: 10px; }
 td:first-child { color: #8e8e93; }
+tr.hl-row { background: rgba(10, 132, 255, 0.25); }
+tr.hl-row td { border-bottom-color: rgba(10, 132, 255, 0.5); }
+canvas { touch-action: manipulation; }
 </style>
 </head>
 <body>
@@ -262,6 +265,8 @@ let manualHoles = [
 { angle: 52.5, reference: 2 }
 ];
 let lastExport = { points: [], meta: null };
+let selectedHole = -1;
+let canvasPoints = [];
 const STATE_KEY = 'pcdAppState';
 function saveState() {
 try {
@@ -452,6 +457,9 @@ meta: { diameter, offX, offY, thread: threadSel, mode: currentMode }
 };
 absPoints.forEach((p, index) => {
 const row = resultsTable.insertRow();
+row.dataset.hole = index;
+if (index === selectedHole) row.classList.add('hl-row');
+row.addEventListener('click', () => selectHole(index, true));
 row.insertCell(0).innerText = `#${index + 1}`;
 let displayAngle = p.angle % 360;
 if(displayAngle < 0) displayAngle += 360;
@@ -477,7 +485,29 @@ const x = radius * Math.cos(angleRad);
 const y = radius * Math.sin(angleRad);
 return {x, y, angle: angleDeg};
 }
+function selectHole(index, fromTable) {
+if (selectedHole === index) { selectedHole = -1; } else { selectedHole = index; }
+updateCalculations();
+if (fromTable) {
+const row = resultsTable.querySelector(`tr[data-hole="${selectedHole}"]`);
+if (row) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+}
+function handleCanvasPointer(evt) {
+const rect = canvas.getBoundingClientRect();
+const x = (evt.clientX - rect.left) * (canvas.width / rect.width);
+const y = (evt.clientY - rect.top) * (canvas.height / rect.height);
+let best = -1;
+let bestDist = Infinity;
+canvasPoints.forEach((p, i) => {
+const d = Math.hypot(p.x - x, p.y - y);
+if (d < bestDist) { bestDist = d; best = i; }
+});
+if (best !== -1 && bestDist <= 18) selectHole(best, false);
+}
+canvas.addEventListener('click', handleCanvasPointer);
 function drawCanvas(points, diameter, threaded) {
+canvasPoints = [];
 ctx.clearRect(0, 0, canvas.width, canvas.height);
 const center = canvas.width / 2;
 const margin = 30;
@@ -515,12 +545,13 @@ const pRad = p.angle * (Math.PI / 180);
 const drawX = center + ((diameter/2) * Math.cos(pRad)) * scale;
 const drawY = center - ((diameter/2) * Math.sin(pRad)) * scale;
 const holeR = threaded ? 5.5 : 4;
+canvasPoints.push({ x: drawX, y: drawY });
 ctx.beginPath();
 ctx.arc(drawX, drawY, holeR, 0, 2 * Math.PI);
-ctx.fillStyle = '#1c1c1e';
+ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : '#1c1c1e';
 ctx.fill();
 ctx.lineWidth = 2;
-ctx.strokeStyle = '#64d2ff';
+ctx.strokeStyle = (index === selectedHole) ? '#ffffff' : '#64d2ff';
 ctx.stroke();
 const textOffset = 16;
 const textX = center + (((diameter/2) * scale) + textOffset) * Math.cos(pRad);
