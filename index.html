@@ -205,6 +205,16 @@ body { background: #ffffff !important; color: #000000 !important; }
 <div class="manual-holes-list" id="manualHolesList">
 <!-- Lista generowana przez JS -->
 </div>
+<div class="input-row" style="gap: 8px; margin-top: 10px;">
+<button class="add-btn" style="margin-top: 0; flex: 1;" onclick="addOppositeHole()">⇄ Na wprost (+180°)</button>
+</div>
+<div class="input-row" style="gap: 8px; margin-top: 10px;">
+<span class="mini-label">Δ kąt</span>
+<input type="number" id="shiftDelta" value="10" step="0.5">
+<button class="btn-small" onclick="shiftManualHoles()">Przesuń wszystkie</button>
+<button class="btn-small" onclick="unshiftManualHoles()">Cofnij</button>
+</div>
+<p class="hint">„Na wprost” dodaje otwór dokładnie naprzeciw ostatniego (+180°). Przesunięcie dodaje Δ kąta do wszystkich otworów podanych od osi X.</p>
 <button class="add-btn" onclick="addManualHole()">+ Dodaj kolejny otwór</button>
 </div>
 <!-- Tryb 3: Grupy PCD -->
@@ -532,6 +542,29 @@ manualHoles[i].reference = String(parseInt(manualHoles[i].reference) - 1);
 }
 }
 manualHoles.splice(index, 1);
+renderManualList();
+updateCalculations();
+}
+function addOppositeHole() {
+let lastIndex = manualHoles.length - 1;
+if (lastIndex < 0) { manualHoles.push({ angle: 180, reference: 'absolute' }); }
+else { manualHoles.push({ angle: 180, reference: String(lastIndex) }); }
+renderManualList();
+updateCalculations();
+}
+function shiftManualHoles() {
+const delta = parseFloat(document.getElementById('shiftDelta').value) || 0;
+manualHoles.forEach(h => {
+if (h.reference === 'absolute') h.angle += delta;
+});
+renderManualList();
+updateCalculations();
+}
+function unshiftManualHoles() {
+const delta = parseFloat(document.getElementById('shiftDelta').value) || 0;
+manualHoles.forEach(h => {
+if (h.reference === 'absolute') h.angle -= delta;
+});
 renderManualList();
 updateCalculations();
 }
