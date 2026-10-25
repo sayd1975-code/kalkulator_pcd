@@ -540,7 +540,7 @@ for (let i = 0; i < holes; i++) {
 const currentAngleDeg = startAngle + (i * angleStep);
 points.push(calculatePoint(radius, currentAngleDeg));
 }
-} else {
+} else if (currentMode === 'manual') {
 document.getElementById('holeCountDisplay').innerHTML = `${manualHoles.length}<br>otworów`;
 document.getElementById('chordCard').style.display = 'block';
 let absoluteAngles = [];
@@ -632,7 +632,7 @@ collisions.map(c => '<li>' + c.msg + '</li>').join('') + '</ul>';
 warnBox.style.display = 'none';
 warnBox.innerHTML = '';
 }
-drawCanvas(points, diameter, !!thread);
+drawCanvas(points, diameter, !!thread, collisionIdx);
 saveState();
 }
 function detectCollisions(points) {
@@ -685,7 +685,7 @@ if (d < bestDist) { bestDist = d; best = i; }
 if (best !== -1 && bestDist <= 18) selectHole(best, false);
 }
 canvas.addEventListener('click', handleCanvasPointer);
-function drawCanvas(points, diameter, threaded) {
+function drawCanvas(points, diameter, threaded, collisionIdx) {
 canvasPoints = [];
 ctx.clearRect(0, 0, canvas.width, canvas.height);
 const center = canvas.width / 2;
@@ -794,7 +794,7 @@ ctx.fillStyle = (index === selectedHole) ? '#0a84ff' : '#1c1c1e';
 ctx.fill();
 ctx.lineWidth = 2;
 const gColor = (p.group >= 0) ? GROUP_COLORS[p.group % GROUP_COLORS.length] : '#64d2ff';
-const collisionSet = (typeof collisionIdx !== 'undefined' && collisionIdx) ? collisionIdx : null;
+const collisionSet = (collisionIdx) ? collisionIdx : null;
 if (collisionSet && collisionSet.has(index)) {
 ctx.strokeStyle = '#ff3b30';
 ctx.lineWidth = 3;
@@ -820,7 +820,20 @@ const pctx = pcv.getContext('2d');
 const W = pcv.width, H = pcv.height;
 const cx = W / 2, cy = H / 2 - 10;
 const drawingRadius = Math.min(W, H) / 2 - 55;
-const scale = drawingRadius / (m.meta.diameter / 2 || 1);
+let scaleBase = m.meta.diameter / 2;
+if (m.meta.groups) {
+let maxExtent = 0;
+m.points.forEach(p => {
+const ext = Math.hypot(p.x - m.meta.offX, p.y - m.meta.offY) + (p.holeDia || 0) / 2;
+if (ext > maxExtent) maxExtent = ext;
+});
+m.meta.groups.forEach(g => {
+const ext = g.pcd / 2 + g.holeDia / 2;
+if (ext > maxExtent) maxExtent = ext;
+});
+if (maxExtent > 0) scaleBase = maxExtent;
+}
+const scale = drawingRadius / (scaleBase || 1);
 pctx.fillStyle = '#ffffff';
 pctx.fillRect(0, 0, W, H);
 pctx.strokeStyle = '#000000';
@@ -831,11 +844,11 @@ pctx.arc(cx, cy, drawingRadius, 0, 2 * Math.PI);
 pctx.stroke();
 pctx.setLineDash([]);
 m.points.forEach(p => {
-const aRad = p.angle * Math.PI / 180;
-const hx = cx + (m.meta.diameter / 2 * Math.cos(aRad)) * scale;
-const hy = cy - (m.meta.diameter / 2 * Math.sin(aRad)) * scale;
+const hx = cx + (p.x - m.meta.offX) * scale;
+const hy = cy - (p.y - m.meta.offY) * scale;
+const hR = p.holeDia ? Math.max(1.5, (p.holeDia / 2) * scale) : 3.5;
 pctx.beginPath();
-pctx.arc(hx, hy, 3.5, 0, 2 * Math.PI);
+pctx.arc(hx, hy, hR, 0, 2 * Math.PI);
 pctx.stroke();
 });
 pctx.font = '11px -apple-system, sans-serif';
