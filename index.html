@@ -342,8 +342,15 @@ body { background: #ffffff !important; color: #000000 !important; }
 <select id="gcodeFormat">
 <option value="sinumerik">CYCLE81 (Sinumerik / PRONUM)</option>
 <option value="fanuc">G81 (Fanuc / Haas)</option>
+<option value="fanuc-simple">G0/G1 (Fanuc — proste)</option>
 <option value="plain">Tylko lista X Y</option>
 </select>
+</div>
+<div class="input-row" style="gap: 8px; margin-bottom: 12px;">
+<span class="mini-label">Wiercenie łamane</span>
+<input type="checkbox" id="gPeck" style="width: 20px; height: 20px; flex-grow: 0;">
+<span class="mini-label">Q — skok łamania (mm)</span>
+<input type="number" id="gPeckStep" value="5" min="0.5" step="0.5">
 </div>
 <div class="input-row" style="gap: 8px;">
 <span class="mini-label">Z</span>
@@ -353,7 +360,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <span class="mini-label">S</span>
 <input type="number" id="gSpeed" value="1200" step="100">
 </div>
-<p class="hint">Z — głębokość wiercenia (mm), F — posuw (mm/min), S — obroty. Program to punkt startowy — przed obróbką sprawdź go na maszynie.</p>
+<p class="hint">Z — głębokość wiercenia (mm), F — posuw (mm/min), S — obroty, Q — skok łamania wióra. Program to punkt startowy — przed obróbką sprawdź go na maszynie.</p>
 </div>
 </section>
 <section id="sectionWyniki" class="app-section">
@@ -438,6 +445,8 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
+gPeck: document.getElementById('gPeck').checked,
+gPeckStep: document.getElementById('gPeckStep').value,
 manual: manualHoles,
 groups: pcdGroups,
 partDiameter: document.getElementById('partDiameter').value
@@ -458,6 +467,8 @@ if (s.gcodeFormat) document.getElementById('gcodeFormat').value = s.gcodeFormat;
 if (s.gzDepth) document.getElementById('gzDepth').value = s.gzDepth;
 if (s.gFeed) document.getElementById('gFeed').value = s.gFeed;
 if (s.gSpeed) document.getElementById('gSpeed').value = s.gSpeed;
+if (s.gPeck !== undefined) document.getElementById('gPeck').checked = !!s.gPeck;
+if (s.gPeckStep) document.getElementById('gPeckStep').value = s.gPeckStep;
 if (s.manual && s.manual.length) manualHoles = JSON.parse(JSON.stringify(s.manual));
 if (s.groups && s.groups.length) pcdGroups = JSON.parse(JSON.stringify(s.groups));
 if (s.partDiameter) { document.getElementById('partDiameter').value = s.partDiameter; document.getElementById('partDiameterSlider').value = s.partDiameter; }
@@ -1155,6 +1166,8 @@ const z = parseFloat(document.getElementById('gzDepth').value);
 const f = parseFloat(document.getElementById('gFeed').value) || 100;
 const s = parseFloat(document.getElementById('gSpeed').value) || 1200;
 const fmt = document.getElementById('gcodeFormat').value;
+const pec = document.getElementById('gPeck').checked;
+const q = Math.max(0.1, parseFloat(document.getElementById('gPeckStep').value) || 5);
 const th = m.meta.thread;
 const t = th ? THREADS[th] : null;
 const out = [];
@@ -1172,13 +1185,52 @@ if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitc
 out.push('N10 G17 G90 G54');
 out.push('N20 M3 S' + s);
 out.push('N30 G0 Z50.');
-out.push('N40 G99 G81 Z' + z.toFixed(3) + ' R2. F' + f.toFixed(0) + '.');
+out.push(pec ? ('N40 G99 G83 Z' + z.toFixed(3) + ' Q' + q.toFixed(3) + ' R2. F' + f.toFixed(0) + '.') : ('N40 G99 G81 Z' + z.toFixed(3) + ' R2. F' + f.toFixed(0) + '.'));
 let n = 50;
 m.points.forEach(p => {
 out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3) + (m.meta.groups ? ' (G' + (p.group + 1) + ')' : ''));
 n += 10;
 });
 out.push('N' + n + ' G80'); n += 10;
+out.push('N' + n + ' M5'); n += 10;
+out.push('N' + n + ' M30');
+out.push('%');
+} else if (fmt === 'fanuc-simple') {
+const depth = Math.abs(z);
+const clr = 2.0;
+out.push('%');
+if (m.meta.groups) {
+out.push('O0001 (PCD GRUPY / ' + m.points.length + ' OTW.)');
+m.meta.groups.forEach((g, gi) => {
+out.push('(GRUPA ' + (gi + 1) + ': ' + g.holes + 'x D' + g.holeDia.toFixed(3) + ' PCD ' + g.pcd.toFixed(3) + ')');
+});
+} else {
+out.push('O0001 (PCD D' + m.meta.diameter.toFixed(3) + ' / ' + m.points.length + ' OTW.)');
+}
+if (t) out.push('(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pitch.toFixed(3) + ')');
+out.push('N10 G17 G90 G54');
+out.push('N20 M3 S' + s);
+out.push('N30 G0 Z2.0');
+let n = 40;
+m.points.forEach(p => {
+out.push('N' + n + ' G0 X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3) + (m.meta.groups ? ' (G' + (p.group + 1) + ')' : '')); n += 10;
+if (pec && depth > 0) {
+let zd = 0;
+while (zd < depth - 1e-9) {
+const target = Math.min(zd + q, depth);
+out.push('N' + n + ' G1 Z-' + target.toFixed(3) + ' F' + f.toFixed(0) + '.'); n += 10;
+out.push('N' + n + ' G0 Z2.0'); n += 10;
+zd = target;
+if (zd < depth - 1e-9) {
+const rap = Math.max(0, zd - 2);
+out.push('N' + n + ' G0 Z-' + rap.toFixed(3)); n += 10;
+}
+}
+} else {
+out.push('N' + n + ' G1 Z' + z.toFixed(3) + ' F' + f.toFixed(0) + '.'); n += 10;
+}
+out.push('N' + n + ' G0 Z2.0'); n += 10;
+});
 out.push('N' + n + ' M5'); n += 10;
 out.push('N' + n + ' M30');
 out.push('%');
@@ -1193,7 +1245,7 @@ if (t) out.push(';(' + th + ' - OTWOR D' + t.drill.toFixed(3) + ' SKOK ' + t.pit
 out.push('N10 G17 G54 G90');
 out.push('N20 M3 S' + s);
 out.push('N30 F' + f.toFixed(0));
-out.push('N40 MCALL CYCLE81(5, 0, 1, ' + z.toFixed(3) + ')');
+out.push(pec ? ('N40 MCALL CYCLE83(5, 0, 1, ' + z.toFixed(3) + ', ' + q.toFixed(3) + ', 1, 0.5, 1, 0)') : ('N40 MCALL CYCLE81(5, 0, 1, ' + z.toFixed(3) + ')'));
 let n = 50;
 m.points.forEach(p => {
 out.push('N' + n + ' X' + p.x.toFixed(3) + ' Y' + p.y.toFixed(3));
@@ -1233,6 +1285,8 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
+gPeck: document.getElementById('gPeck').checked,
+gPeckStep: document.getElementById('gPeckStep').value,
 manual: JSON.parse(JSON.stringify(manualHoles)),
 groups: JSON.parse(JSON.stringify(pcdGroups)),
 partDiameter: document.getElementById('partDiameter').value
@@ -1288,6 +1342,8 @@ if (p.gcodeFormat) document.getElementById('gcodeFormat').value = p.gcodeFormat;
 if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
 if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
 if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
+if (p.gPeck !== undefined) document.getElementById('gPeck').checked = !!p.gPeck;
+if (p.gPeckStep) document.getElementById('gPeckStep').value = p.gPeckStep;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
 if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
 if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
@@ -1347,6 +1403,8 @@ gcodeFormat: document.getElementById('gcodeFormat').value,
 gzDepth: document.getElementById('gzDepth').value,
 gFeed: document.getElementById('gFeed').value,
 gSpeed: document.getElementById('gSpeed').value,
+gPeck: document.getElementById('gPeck').checked,
+gPeckStep: document.getElementById('gPeckStep').value,
 manual: JSON.parse(JSON.stringify(manualHoles)),
 groups: JSON.parse(JSON.stringify(pcdGroups)),
 partDiameter: document.getElementById('partDiameter').value
@@ -1377,6 +1435,8 @@ if (p.gcodeFormat) document.getElementById('gcodeFormat').value = p.gcodeFormat;
 if (p.gzDepth) document.getElementById('gzDepth').value = p.gzDepth;
 if (p.gFeed) document.getElementById('gFeed').value = p.gFeed;
 if (p.gSpeed) document.getElementById('gSpeed').value = p.gSpeed;
+if (p.gPeck !== undefined) document.getElementById('gPeck').checked = !!p.gPeck;
+if (p.gPeckStep) document.getElementById('gPeckStep').value = p.gPeckStep;
 if (p.manual && p.manual.length) manualHoles = JSON.parse(JSON.stringify(p.manual));
 if (p.groups && p.groups.length) pcdGroups = JSON.parse(JSON.stringify(p.groups));
 if (p.partDiameter) { document.getElementById('partDiameter').value = p.partDiameter; document.getElementById('partDiameterSlider').value = p.partDiameter; }
@@ -1406,6 +1466,8 @@ document.getElementById('gcodeFormat').addEventListener('change', saveState);
 document.getElementById('gzDepth').addEventListener('change', saveState);
 document.getElementById('gFeed').addEventListener('change', saveState);
 document.getElementById('gSpeed').addEventListener('change', saveState);
+document.getElementById('gPeck').addEventListener('change', saveState);
+document.getElementById('gPeckStep').addEventListener('change', saveState);
 }
 if (!localStorage.getItem(STATE_KEY)) {
 renderManualList();
