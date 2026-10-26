@@ -361,6 +361,7 @@ body { background: #ffffff !important; color: #000000 !important; }
 <span class="mini-label">Q — skok łamania (mm)</span>
 <input type="number" id="gPeckStep" value="5" min="0.5" step="0.5">
 </div>
+<p class="hint">⚠ W Hardoksie nie zaleca się wiercenia łamanego — łamany wiór niszczy narzędzie. Użyj zwykłego wiercenia z chłodziwem.</p>
 <div id="l900Params" style="display: none; margin-bottom: 12px;">
 <div class="input-row" style="gap: 8px; margin-bottom: 8px;">
 <span class="mini-label">D korekcja</span>
@@ -378,7 +379,7 @@ F{posuw}</textarea>
 <span class="mini-label">F</span>
 <input type="number" id="gFeed" value="100" step="10">
 <span class="mini-label">S</span>
-<input type="number" id="gSpeed" value="1200" step="100">
+<input type="number" id="gSpeed" value="750" step="50">
 <span class="mini-label">Z bezp.</span>
 <input type="number" id="gClearZ" value="20" step="1">
 </div>
@@ -1222,7 +1223,7 @@ const m = lastExport;
 if (!m.points.length) return '';
 const z = parseFloat(document.getElementById('gzDepth').value);
 const f = parseFloat(document.getElementById('gFeed').value) || 100;
-const s = parseFloat(document.getElementById('gSpeed').value) || 1200;
+const s = parseFloat(document.getElementById('gSpeed').value) || 750;
 const fmt = document.getElementById('gcodeFormat').value;
 const pec = document.getElementById('gPeck').checked;
 const q = Math.max(0.1, parseFloat(document.getElementById('gPeckStep').value) || 5);
