@@ -249,6 +249,17 @@ body { background: #ffffff !important; color: #000000 !important; }
 <p class="hint">Kołnierze wg DIN 2576 (PN16) oraz typowe rozstawy — kliknięcie ustawia liczbę otworów i PCD.</p>
 </div>
 </div>
+<div class="input-group">
+<label>Rozstaw otworów (cięciwa) → PCD</label>
+<div class="input-row" style="gap: 8px; justify-content: flex-start;">
+<span class="mini-label">L</span>
+<input type="number" id="chordIn" value="30" step="0.1">
+<span class="mini-label">mm</span>
+<button class="btn-small" onclick="calcFromChord()">Oblicz PCD</button>
+</div>
+<p class="hint" id="chordResult">Rozstaw L = odległość między środkami sąsiednich otworów. Wzór: D = L / sin(180°/N).</p>
+<button class="btn-small" id="chordApply" style="display: none; margin-top: 10px;" onclick="applyChordD()">✓ Wstaw jako średnicę D</button>
+</div>
 </div>
 <!-- Tryb 2: Ręczne definiowanie (Łańcuchowe) -->
 <div id="manualMode" class="mode-section">
@@ -618,6 +629,27 @@ ${selectOptions}
 `;
 listDiv.appendChild(itemDiv);
 });
+}
+let lastChordD = null;
+function calcFromChord() {
+const L = parseFloat(document.getElementById('chordIn').value);
+const n = Math.max(2, parseInt(document.getElementById('holes').value) || 2);
+if (!L || L <= 0) {
+document.getElementById('chordResult').innerText = 'Podaj rozstaw L większy od zera.';
+document.getElementById('chordApply').style.display = 'none';
+return;
+}
+const d = L / Math.sin((180 / n) * (Math.PI / 180));
+lastChordD = d;
+document.getElementById('chordResult').innerText = 'Dla N=' + n + ' otworów i rozstawu L=' + L + ' mm: PCD = ' + d.toFixed(3) + ' mm (R ' + (d / 2).toFixed(3) + ' mm)';
+document.getElementById('chordApply').style.display = 'inline-block';
+}
+function applyChordD() {
+if (lastChordD == null) return;
+document.getElementById('diameter').value = lastChordD.toFixed(3);
+document.getElementById('diameterSlider').value = Math.min(600, Math.max(10, Math.round(lastChordD)));
+document.getElementById('chordApply').style.display = 'none';
+updateCalculations();
 }
 function applyTemplate(holes, pcd, name) {
 document.getElementById('holes').value = holes;
